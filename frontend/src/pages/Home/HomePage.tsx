@@ -146,14 +146,62 @@ export function HomePage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="footer-container">
-        <div className="main-wrapper footer-content">
-          <div>© 2026 Silva Neto. Todos os direitos reservados.</div>
-          <div className="footer-links">
-            <a href="#" className="footer-link">Termos de Serviço</a>
-            <a href="#" className="footer-link">Política de Privacidade</a>
-            <a href="#" className="footer-link">Gerenciar Cookies</a>
+      <footer style={{ 
+        backgroundColor: '#1a1a1a', /* Cor de fundo mais escura */
+        color: '#9ca3af',           /* Cor do texto cinza claro */
+        padding: '3rem 1rem', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        marginTop: 'auto',
+        borderTop: '1px solid #333'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          gap: '1rem' 
+        }}>
+          
+          <div style={{ fontSize: '0.875rem', textAlign: 'center' }}>
+            © {new Date().getFullYear()} Todos os direitos reservados.
           </div>
+          
+          <div style={{ 
+            display: 'flex', 
+            gap: '1.5rem', 
+            fontSize: '0.875rem', 
+            flexWrap: 'wrap', 
+            justifyContent: 'center' 
+          }}>
+            <a 
+              href="termos" 
+              style={{ color: '#9ca3af', textDecoration: 'none', cursor: 'pointer' }}
+            >
+              Termos de Serviço
+            </a>
+            
+            <a 
+              href="/privacidade" 
+              style={{ color: '#9ca3af', textDecoration: 'none', cursor: 'pointer' }}
+            >
+              Política de Privacidade
+            </a>
+            
+            <button 
+              onClick={() => alert('Modal de Gerenciamento de Cookies em breve!')} 
+              style={{ 
+                color: '#9ca3af', 
+                background: 'transparent', 
+                border: 'none', 
+                padding: 0, 
+                fontSize: 'inherit', 
+                cursor: 'pointer' 
+              }}
+            >
+              Gerenciar Cookies
+            </button>
+          </div>
+          
         </div>
       </footer>
 
