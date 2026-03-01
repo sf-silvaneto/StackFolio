@@ -30,9 +30,9 @@ body.light-mode { background-color: #e2e8f0 !important; }
 * { box-sizing: border-box !important; }
 
 .main-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
+  max-width: 0 auto;
+  margin: 0;
+  width: 0 auto;
 }
 
 /* =========================================================

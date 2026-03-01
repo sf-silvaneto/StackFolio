@@ -80,7 +80,7 @@ export function HomePage() {
           {/* ESQUERDA: NOME */}
           <div className="nav-left">
             <div className="logo-link" onClick={reloadPage}>
-              <h2 style={{ margin: 0, color: colors.primary, fontWeight: '900', fontSize: '28px', letterSpacing: '-1px' }}>StackFolio</h2>
+              <h2 style={{ margin: 0, color: colors.primary, fontWeight: '900', fontSize: '45px', letterSpacing: '-1px' }}>Stack Folio</h2>
             </div>
           </div>
           
