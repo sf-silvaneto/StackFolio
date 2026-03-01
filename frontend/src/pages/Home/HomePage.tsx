@@ -13,7 +13,7 @@ const SkillIcon = ({ slug, size, isActive, fallbackColor }: { slug: string, size
     if (!s) return '';
     const lower = s.toLowerCase();
     if (lower === 'wsl') return 'linux';
-    if (lower === 'aws' || lower === 'amazon web services') return 'amazonaws';
+    if (lower === 'aws' || lower === 'amazon web services' || lower === 'amazonaws') return 'amazonwebservices'; 
     if (lower === 'c++') return 'cplusplus';
     if (lower === 'node.js' || lower === 'nodejs') return 'nodedotjs';
     return lower;
@@ -485,13 +485,30 @@ export function HomePage() {
                 <GoogleLogin onSuccess={handleSuccess} theme={theme === 'dark' ? 'filled_black' : 'filled_blue'} shape="pill" />
               ) : (
                 <>
-                  <button onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: colors.primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' }}>
+                  {/* Botão Meus Projetos dinâmico */}
+                  <button onClick={() => navigate(`/${user?.name?.toLowerCase().replace(/\s+/g, '') || ''}`)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: colors.primary, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '13px', transition: 'all 0.2s' }}>
                     <LayoutDashboard size={16} /> Meus Projetos
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  
+                  {/* === FOTO E NOME DINÂMICOS (Com Navegação Corrigida) === */}
+                  <div 
+                    onClick={(e) => {
+                      e.preventDefault(); // Impede qualquer atualização de página
+                      e.stopPropagation();
+                      // Garante que se o usuário não tiver nome ainda, ele vai pro mock silvaneto
+                      const profilePath = user?.name ? user.name.toLowerCase().replace(/\s+/g, '') : 'silvaneto';
+                      navigate(`/${profilePath}`);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 12px', borderRadius: '16px', transition: 'background 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.background = theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    title="Ir para o meu perfil"
+                  >
                     <img src={user?.picture || defaultGoogleAvatar} alt="Perfil" style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover', background: colors.primary }} />
-                    <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user?.name}</span>
+                    <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user?.name || 'Silva Neto'}</span>
                   </div>
+                  {/* ================================================= */}
+
                   <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', borderRadius: '50%' }} title="Sair da conta">
                     <LogOut size={20} />
                   </button>

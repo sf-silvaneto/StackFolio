@@ -25,54 +25,54 @@ body, html {
   flex-direction: column;
 }
 
-body.light-mode { background-color: #e2e8f0 !important; }
+body.light-mode { 
+  background-color: #f1f5f9 !important; /* Um tom levemente mais suave para o perfil */
+}
+
+body.dark-mode {
+  background-color: #0f172a !important;
+  color: white;
+}
 
 * { box-sizing: border-box !important; }
-
-.main-wrapper {
-  max-width: 0 auto;
-  margin: 0;
-  width: 0 auto;
-}
 
 /* =========================================================
    2. NAVBAR CENTRALIZADA (Silva Neto Premium)
 ========================================================= */
 .navbar-container {
   display: flex;
-  justify-content: space-between; /* Mantém as pontas nos lugares */
+  justify-content: space-between;
   align-items: center;
   padding: 0 20px;
   width: 100%;
-  position: relative; /* Necessário para o centro absoluto */
+  position: relative;
+  height: 70px;
 }
 
-/* Áreas das pontas flexíveis para equilibrar o centro */
 .nav-left, .nav-right {
   display: flex;
   align-items: center;
-  flex: 1; /* Ocupam espaço igual para forçar o centro */
-  min-width: 200px; /* Garante espaço mínimo */
+  flex: 1;
+  min-width: 200px;
 }
 
 .nav-right {
-  justify-content: flex-end; /* Alinha o login bem à direita */
+  justify-content: flex-end;
   gap: 15px;
 }
 
-/* CENTRALIZAÇÃO ABSOLUTA DA BUSCA */
 .nav-center {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%); /* Centraliza perfeitamente */
+  transform: translateX(-50%);
   width: 100%;
-  max-width: 500px; /* Tamanho controlado da busca */
+  max-width: 500px;
   z-index: 10;
 }
 
 .search-input {
   width: 100%;
-  padding: 13px 22px;
+  padding: 11px 20px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
@@ -81,36 +81,58 @@ body.light-mode { background-color: #e2e8f0 !important; }
   font-size: 14px;
   transition: 0.3s;
 }
+
 .search-input:focus {
   border-color: #6366f1;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
 }
 
-.logo-link {
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.logo-link:hover { opacity: 0.8; }
+/* =========================================================
+   3. ESTILOS DO PERFIL E CONFIGURAÇÕES
+========================================================= */
 
-.theme-toggle-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: 0.3s;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+/* Animação para o Menu de Configurações Lateral */
+@keyframes slideLeft {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
-.theme-toggle-btn:hover { background: rgba(99, 102, 241, 0.2); border-color: #6366f1; }
+
+.animate-slide-left {
+  animation: slideLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Glassmorphism para o Overlay das Configurações */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Cards de Tecnologia no Perfil */
+.tech-pill {
+  transition: all 0.2s ease;
+  cursor: default;
+}
+.tech-pill:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+/* Estilo para truncar descrições longas nos projetos */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* =========================================================
-   3. RESTO DO CSS (Sem alterações)
+   4. MODAIS E FOOTER (Silva Neto)
 ========================================================= */
 .modal-overlay {
   position: fixed;
@@ -132,85 +154,35 @@ body.light-mode { background-color: #e2e8f0 !important; }
   position: relative;
 }
 
-.close-modal-btn {
-  position: absolute;
-  top: 25px; right: 25px;
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 10010;
-}
-
-.tech-drawer {
-  position: absolute;
-  top: 0; right: 0;
-  width: 450px; height: 100%;
-  background: #1e293b;
-  z-index: 10020;
-  padding: 40px;
-  transform: translateX(100%);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-}
-.tech-drawer.open { transform: translateX(0); }
-
-.skill-card {
-  background: #1e293b;
-  width: 85px; height: 95px;
-  border-radius: 16px 16px 4px 4px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border-bottom: 3px solid #6366f1;
-}
-
-.skill-logo { width: 24px; height: 24px; object-fit: contain; }
-
-.modal-gallery-img {
-  width: 85px; height: 60px;
-  border-radius: 10px;
-  object-fit: cover;
-  cursor: zoom-in;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.icon-btn {
-  position: relative;
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: 0.3s;
-  background: rgba(255, 255, 255, 0.05);
-  color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.icon-btn::after {
-  content: attr(data-name);
-  position: absolute; bottom: -35px;
-  background: #6366f1; color: #fff;
-  padding: 5px 12px; border-radius: 6px; font-size: 11px;
-  opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap;
-}
-.icon-btn:hover::after { opacity: 1; bottom: -42px; }
-
 .footer-container {
   margin-top: auto;
-  padding: 50px 0 30px 0;
+  padding: 40px 0 20px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 23, 42, 0.8);
   width: 100%;
 }
 
 .footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
   color: #64748b;
-  font-weight: 500;
 }
 
-.footer-links { display: flex; gap: 30px; }
-.footer-link { color: #64748b; text-decoration: none; transition: 0.3s ease; }
-.footer-link:hover { color: #6366f1; }
+/* Botão de Toggle de Tema Estilizado */
+.theme-toggle-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: 0.3s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+}
