@@ -3,12 +3,17 @@ import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
-  // Rota para o Login do Google
-  @HttpCode(HttpStatus.OK)
   @Post('google')
-  async signInGoogle(@Body('token') token: string) {
-    return this.authService.signInGoogle(token);
+  @HttpCode(HttpStatus.OK)
+  async googleLogin(@Body('token') token: string) {
+    return this.authService.googleLogin(token);
+  }
+
+  @Post('register/complete')
+  @HttpCode(HttpStatus.CREATED)
+  async completeRegistration(@Body() body: any) {
+    return this.authService.completeRegistration(body);
   }
 }

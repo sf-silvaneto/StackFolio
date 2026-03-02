@@ -1,8 +1,10 @@
+import logoImg from '../../assets/logo.png';
 import React, { useState, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+
 import { Github, Linkedin, ExternalLink, X, TrendingUp, Clock, Eye, ThumbsUp, User, Sun, Moon, LogOut, LayoutDashboard, Briefcase, GraduationCap, Play, Filter, ChevronDown, Search, Bookmark, BadgeCheck, Layers, XCircle, MessageCircle, Send, Grid3x3, LayoutList, Terminal, Cpu, Globe, CheckCircle, Wrench, Lightbulb, Share2, Link as LinkIcon, Twitter } from 'lucide-react';
 
 // Componente inteligente para lidar com ícones de skills (incluindo correções de slugs)
@@ -13,7 +15,7 @@ const SkillIcon = ({ slug, size, isActive, fallbackColor }: { slug: string, size
     if (!s) return '';
     const lower = s.toLowerCase();
     if (lower === 'wsl') return 'linux';
-    if (lower === 'aws' || lower === 'amazon web services' || lower === 'amazonaws') return 'amazonwebservices'; 
+    if (lower === 'aws' || lower === 'amazon web services' || lower === 'amazonaws') return 'amazonaws';
     if (lower === 'c++') return 'cplusplus';
     if (lower === 'node.js' || lower === 'nodejs') return 'nodedotjs';
     return lower;
@@ -36,8 +38,9 @@ const SkillIcon = ({ slug, size, isActive, fallbackColor }: { slug: string, size
 };
 
 export function HomePage() {
-  const { theme, toggleTheme, colors } = useTheme();
-  const { signed, user, signInGoogle, signOut } = useAuth() as any; 
+  const { theme, toggleTheme, colors } = useTheme() as any;
+  const { user, token, loginWithGoogle, logout } = useAuth() as any;
+  const signed = !!token; // Cria a variável signed automaticamente baseada no token
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('trending');
@@ -203,8 +206,26 @@ export function HomePage() {
     document.body.className = theme === 'light' ? 'light-mode' : '';
   }, [theme]);
 
-  const handleSuccess = async (res: any) => { if (res.credential) { try { await signInGoogle(res.credential); } catch (error) { console.error(error); } } };
-  const handleLogout = () => { if (signOut) signOut(); };
+  const handleSuccess = async (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      try {
+        // Usa a NOVA função do contexto
+        const isComplete = await loginWithGoogle(credentialResponse.credential);
+        
+        // Decide inteligentemente para onde enviar o usuário
+        if (isComplete) {
+          navigate('/profile'); // Conta antiga: vai direto pro perfil
+        } else {
+          navigate('/complete-profile'); // Conta nova: vai pra tela de completar o cadastro
+        }
+      } catch (error) {
+        console.error("Falha ao processar login do Google", error);
+      }
+    }
+  };
+
+  // ✅ CORREÇÃO AQUI: Mudando de signOut() para logout()
+  const handleLogout = () => { if (logout) logout(); };
   const reloadPage = () => { window.location.reload(); };
 
   const handleLike = (e: React.MouseEvent, projectId: number) => {
@@ -421,7 +442,20 @@ export function HomePage() {
         <div className="main-wrapper navbar-container">
           <div className="nav-left">
             <div className="logo-link" onClick={reloadPage}>
-              <h2 style={{ margin: 0, color: colors.primary, fontWeight: '900', fontSize: '32px', letterSpacing: '-1px' }}>Stack Folio</h2>
+              {/* NAVBAR */}
+<header style={{ borderBottom: `1px solid ${colors.border}`, padding: '2px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 80 }}>
+  <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px' }}>
+    
+    {/* LOGO EM IMAGEM */}
+    <div onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      <img 
+        src={logoImg} 
+        alt="StackFolio Logo" 
+        style={{ height: '50px', width: 'auto', objectFit: 'contain' }} 
+      />
+    </div>
+  </div>
+</header>
             </div>
           </div>
           

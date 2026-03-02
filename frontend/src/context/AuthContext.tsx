@@ -1,54 +1,67 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { api } from '../services/api';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
 interface AuthContextData {
-  user: User | null;
-  signed: boolean;
-  signInGoogle: (token: string) => Promise<void>;
-  signOut: () => void;
+  user: any;
+  token: string | null;
+  tempGoogleData: any;
+  loginWithGoogle: (credential: string) => Promise<boolean>;
+  completeRegistration: (profileData: any) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('@StackFolio:token'));
+  
+  // Estado intermediário para segurar os dados antes do cadastro final
+  const [tempGoogleData, setTempGoogleData] = useState<any>(null);
 
-  useEffect(() => {
-    const storagedUser = localStorage.getItem('user');
-    const storagedToken = localStorage.getItem('token');
+  const loginWithGoogle = async (credential: string): Promise<boolean> => {
+    const response = await api.post('/auth/google', { token: credential });
 
-    if (storagedToken && storagedUser) {
-      setUser(JSON.parse(storagedUser));
+    if (response.data.complete) {
+      // Usuário logado perfeitamente
+      setToken(response.data.access_token);
+      setUser(response.data.user);
+      localStorage.setItem('@StackFolio:token', response.data.access_token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+      return true; 
+    } else {
+      // Novo usuário, salva dados no tempGoogleData e retorna false
+      setTempGoogleData(response.data.tempData);
+      return false; 
     }
-  }, []);
+  };
 
-  async function signInGoogle(googleToken: string) {
-    // Chama a rota que vamos criar no NestJS
-    const response = await api.post('/auth/google', { token: googleToken });
-    
-    const { access_token, user: userData } = response.data;
-    
-    setUser(userData);
-    localStorage.setItem('token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
-  }
+  const completeRegistration = async (profileData: any) => {
+    // Une o email/foto/nome do Google com os inputs que ele preencheu agora (bio, nickname...)
+    const fullData = { ...tempGoogleData, ...profileData };
+    const response = await api.post('/auth/register/complete', fullData);
 
-  function signOut() {
-    localStorage.clear();
+    // Salva a sessão permanentemente
+    setToken(response.data.access_token);
+    setUser(response.data.user);
+    setTempGoogleData(null); 
+    
+    localStorage.setItem('@StackFolio:token', response.data.access_token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+  };
+
+  const logout = () => {
     setUser(null);
-  }
+    setToken(null);
+    localStorage.removeItem('@StackFolio:token');
+    delete api.defaults.headers.common['Authorization'];
+  };
 
   return (
-    <AuthContext.Provider value={{ signed: !!user, user, signInGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, token, tempGoogleData, loginWithGoogle, completeRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => useContext(AuthContext);

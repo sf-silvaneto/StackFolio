@@ -3,17 +3,28 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // Se estiver usando SQLite, tools String[] vai dar erro, me avise se for o caso.
   url      = env("DATABASE_URL")
 }
 
 model User {
   id        String    @id @default(uuid())
-  name      String
   email     String    @unique
-  password  String
+  name      String
+  password  String?   // Opcional para quem loga com Google
+  googleId  String?   @unique
+  picture   String?
+  
+  // Informações do perfil
+  nickname  String?   @unique
+  bio       String?
+  tools     String[]  // Requer PostgreSQL (Array de strings)
+
+  // Relacionamentos
   projects  Project[]
+  
   createdAt DateTime  @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Project {
@@ -22,4 +33,6 @@ model Project {
   description String
   userId      String
   user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

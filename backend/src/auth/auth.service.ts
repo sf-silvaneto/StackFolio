@@ -1,58 +1,73 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { OAuth2Client } from 'google-auth-library';
-import { PrismaService } from '../prisma/prisma.service'; // Verifique se a pasta é 'prisma'
 import { JwtService } from '@nestjs/jwt';
-
-const client = new OAuth2Client("952392498435-c1bebtgqk4coukt5spdnf4c31rg7cppo.apps.googleusercontent.com");
+import { PrismaService } from '../prisma/prisma.service';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+  private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
   constructor(
     private prisma: PrismaService,
-    private jwt: JwtService,
+    private jwtService: JwtService,
   ) {}
 
-  async signInGoogle(token: string) {
+  async googleLogin(token: string) {
     try {
-      const ticket = await client.verifyIdToken({
+      // 1. Descriptografa e valida o token direto com o Google
+      const ticket = await this.googleClient.verifyIdToken({
         idToken: token,
-        audience: "952392498435-c1bebtgqk4coukt5spdnf4c31rg7cppo.apps.googleusercontent.com",
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-      
+
       const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
-        throw new UnauthorizedException('Dados do Google inválidos');
-      }
+      if (!payload) throw new UnauthorizedException('Token Google inválido');
 
-      let user = await this.prisma.user.findUnique({
-        where: { email: payload.email },
+      const { email, name, picture, sub: googleId } = payload;
+
+      // 2. Busca o usuário no banco pelo email
+      const user = await this.prisma.user.findUnique({
+        where: { email },
       });
 
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            email: payload.email,
-            name: payload.name || 'Usuário Google',
-            password: '', 
-          },
-        });
+      // 3. Se usuário existe e tem cadastro, realiza login completo
+      if (user) {
+        return {
+          complete: true,
+          access_token: this.jwtService.sign({ id: user.id, email: user.email }),
+          user,
+        };
       }
 
-      const access_token = this.jwt.sign({ 
-        sub: user.id, 
-        email: user.email 
-      });
-
+      // 4. Se não existe, envia os dados base para a tela de "Completar Cadastro" do Frontend
       return {
-        access_token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        complete: false,
+        message: 'incomplete_registration',
+        tempData: { email, name, picture, googleId },
       };
     } catch (error) {
-      throw new UnauthorizedException('Falha na autenticação com Google');
+      throw new UnauthorizedException('Falha na autenticação do Google');
     }
+  }
+
+  async completeRegistration(data: any) {
+    // Criação final do usuário combinando os dados do Google + Formulário do Frontend
+    const newUser = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name,
+        googleId: data.googleId,
+        picture: data.picture,
+        nickname: data.nickname,
+        bio: data.bio,
+        tools: data.tools || [],
+      },
+    });
+
+    // Retorna o JWT para fazer o login automático
+    return {
+      access_token: this.jwtService.sign({ id: newUser.id, email: newUser.email }),
+      user: newUser,
+    };
   }
 }
