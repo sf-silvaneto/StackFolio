@@ -5,6 +5,7 @@ import { HomePage } from './pages/Home/HomePage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { CompleteProfilePage } from './pages/Auth/CompleteProfilePage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
+import { SettingsPage } from './pages/Settings/SettingsPage';
 import { PrivacyPage } from './pages/Legal/PrivacyPage';
 import { TermsPage } from './pages/Legal/TermsPage';
 
@@ -27,13 +28,8 @@ export default function App() {
         {/* --- ROTAS PÚBLICAS --- */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        
-        {/* --- ROTA DE ONBOARDING (Cadastro do Google) --- */}
-        {/* Atualizado para português conforme solicitado */}
         <Route path="/completar-perfil" element={<CompleteProfilePage />} />
-        
-        {/* --- ROTAS DE PERFIL (Dinâmicas) --- */}
-        {/* Esta rota permite acessar: stackfolio.com/silvaneto */}
+        <Route path="/configuracoes" element={<SettingsPage />} />
         <Route path="/:username" element={<ProfilePage />} />
 
         {/* --- ROTAS LEGAIS --- */}

@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { GoogleLogin } from '@react-oauth/google';
 import { 
   MapPin, Briefcase, Calendar, Link as LinkIcon, Github, Linkedin, Mail, 
   Edit3, Share2, PlusCircle, Terminal, Languages, BarChart, 
-  GraduationCap, Cpu, Code, Sun, Moon, X, Camera, ImagePlus, ExternalLink
+  GraduationCap, Cpu, Code, Sun, Moon, X, Camera, ImagePlus, ExternalLink,
+  Search, ChevronDown, User, Settings, LogOut, Save, Pin, Eye, ThumbsUp
 } from 'lucide-react';
+
+import logoImg from '../../assets/logo.png';
 
 const SkillIcon = ({ slug, size, fallbackColor }: { slug: string, size: number, fallbackColor?: string }) => {
   const [error, setError] = useState(false);
@@ -14,10 +18,9 @@ const SkillIcon = ({ slug, size, fallbackColor }: { slug: string, size: number, 
     if (!s) return '';
     const lower = s.toLowerCase();
     const map: Record<string, string> = {
-      'wsl': 'linux', 'aws': 'amazonwebservices', 'gcp': 'googlecloud', 'c++': 'cplusplus', 'c#': 'csharp',
-      'node.js': 'nodedotjs', 'vue.js': 'vuedotjs', 'next.js': 'nextdotjs', 'react native': 'react',
-      'tailwind css': 'tailwindcss', '.net': 'dotnet', 'spring boot': 'springboot', 'adobe xd': 'adobexd', 
-      'sql': 'mysql', 'java': 'openjdk', 'css3': 'css3', 'html5': 'html5', 'azure': 'microsoftazure', 'javascript': 'javascript'
+      'cisco': 'cisco', 'python': 'python', 'aws': 'amazonwebservices', 'react': 'react',
+      'node.js': 'nodedotjs', 'typescript': 'typescript', 'figma': 'figma', 'docker': 'docker',
+      'c++': 'cplusplus'
     };
     return map[lower] || lower.replace(/[^a-z0-9]/g, '');
   };
@@ -28,76 +31,173 @@ const SkillIcon = ({ slug, size, fallbackColor }: { slug: string, size: number, 
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const { user } = useAuth() as any;
+  const { user, logout, loginWithGoogle } = useAuth() as any; 
   const { theme, toggleTheme, colors } = useTheme() as any;
   const navigate = useNavigate();
 
   const [profileData, setProfileData] = useState<any>(null);
+  const [userProjects, setUserProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const isOwner = user?.username === username || (!username && user);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+
+  // CORREÇÃO 1: Adicionado o ?. antes do replace para evitar erro de tela branca
+  const isOwner = user?.name?.toLowerCase()?.replace(/\s+/g, '') === username || (!username && user);
+  const defaultGoogleAvatar = "https://lh3.googleusercontent.com/a/default-user=s96-c";
+
+  const handleSuccess = async (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      try {
+        const isComplete = await loginWithGoogle(credentialResponse.credential);
+        if (isComplete) navigate('/profile'); 
+        else navigate('/complete-profile'); 
+      } catch (error) { console.error("Falha ao processar login", error); }
+    }
+  };
 
   useEffect(() => {
     const loadData = () => {
-      if (isOwner && user) {
-        setProfileData(user);
-      } else {
-        // Mock de visualização para teste
-        setProfileData({
-          fullName: "Silvestre Fernandes",
-          displayName: "Silva Neto",
-          username: username || "silvaneto",
-          role: "Desenvolvedor Fullstack",
-          location: "Mossoró - RN",
-          availability: "Open to Work",
-          seniority: "Júnior",
-          englishLevel: "Avançado",
-          bio: "Apaixonado por tecnologia e focado em criar soluções eficientes.",
-          profileImg: "https://api.dicebear.com/7.x/avataaars/svg?seed=silvestre",
-          coverImg: "",
-          tools: ["React", "Node.js", "TypeScript", "AWS"],
-          education: [
-            { id: 1, fieldOfStudy: "Ciência da Computação", institution: "Universidade Potiguar (UnP)", startMonth: "Fevereiro", startYear: "2024", endMonth: "Dezembro", endYear: "2027" }
-          ],
-          contacts: { github: "https://github.com/", linkedin: "https://linkedin.com/in/", publicEmail: "contato@stackfolio.com" }
-        });
-      }
+      const baseData = {
+        fullName: user?.name || "Silvestre Fernandes",
+        displayName: user?.name?.split(' ')[0] || "Silva Neto",
+        username: username || "silvaneto",
+        role: "Engenheiro de Software",
+        location: "Mossoró - RN",
+        cep: "59600000",
+        availability: "Open to Work",
+        seniority: "Júnior",
+        englishLevel: "Avançado",
+        bio: "Desenvolvedor focado em criar soluções eficientes. Tenho forte interesse em Cibersegurança e Inteligência Artificial, e grande experiência em simulações de redes e infraestrutura corporativa.",
+        profileImg: user?.picture || "https://api.dicebear.com/7.x/avataaars/svg?seed=silvestre",
+        coverImg: "",
+        tools: ["Python", "Cisco", "AWS", "React", "Node.js", "Docker"],
+        stats: { views: '1.2K', likes: 350 },
+        education: [ { id: 1, fieldOfStudy: "Ciência da Computação", institution: "Universidade Potiguar (UnP)", startMonth: "Fev", startYear: "2024", endMonth: "Dez", endYear: "2027" } ],
+        experience: [ { id: 1, role: "Agente de Atendimento", company: "AeC", startYear: "2025", endYear: "Atual" } ],
+        contacts: { github: "https://github.com/", linkedin: "https://linkedin.com/", publicEmail: user?.email || "contato@stackfolio.com" }
+      };
+      
+      const mockProjects = [
+        {
+          id: 1,
+          title: "Arquitetura Hierárquica: Matriz e Filiais",
+          description: "Simulação robusta de infraestrutura corporativa.",
+          image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc51?auto=format&fit=crop&w=800&q=80",
+          skills: [{name: "Cisco", slug: "cisco"}, {name: "AWS", slug: "aws"}],
+          isPinned: true 
+        },
+        {
+          id: 2,
+          title: "Monitoramento IoT: Portas e Janelas",
+          description: "Detecção de abertura em tempo real com ESP32.",
+          image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+          skills: [{name: "C++", slug: "c++"}, {name: "React", slug: "react"}],
+          isPinned: false
+        }
+      ];
+
+      setProfileData(baseData);
+      setEditForm(baseData);
+      setUserProjects(mockProjects);
       setLoading(false);
     };
     loadData();
-  }, [username, user, isOwner]);
+  }, [username, user]);
 
-  if (!colors || loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-      <Cpu size={40} className="animate-spin" style={{ color: '#10b981' }} />
-    </div>
-  );
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let cep = e.target.value.replace(/\D/g, '');
+    setEditForm({ ...editForm, cep });
+    if (cep.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setEditForm(prev => ({ ...prev, location: `${data.localidade} - ${data.uf}` }));
+        }
+      } catch (error) { console.error("Erro ao buscar CEP", error); }
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'avatar') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setProfileData((prev: any) => ({ ...prev, [type === 'cover' ? 'coverImg' : 'profileImg']: url }));
+    }
+  };
+
+  const handleSaveProfile = () => {
+    setProfileData({ ...profileData, ...editForm });
+    setShowEditModal(false);
+    alert('Perfil atualizado com sucesso!');
+  };
+
+  // CORREÇÃO 2: Proteção de carregamento do colors
+  if (!colors) return null;
+
+  if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Cpu size={40} className="animate-spin" color="#10b981" /></div>;
 
   const pageBgColor = theme === 'light' ? '#f8fafc' : '#0f172a';
+  const inputStyle = { width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, background: theme === 'light' ? '#f1f5f9' : '#1e293b', color: colors.text, fontSize: '14px', outline: 'none', marginBottom: '15px' };
 
   return (
     <div style={{ background: pageBgColor, minHeight: '100vh', display: 'flex', flexDirection: 'column', color: colors.text }}>
       
       {/* NAVBAR */}
-      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '15px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 80 }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px' }}>
-          <h2 onClick={() => navigate('/')} style={{ margin: 0, color: colors.primary, fontWeight: '900', fontSize: '24px', letterSpacing: '-1px', cursor: 'pointer' }}>Stack Folio</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.text, cursor: 'pointer' }}>
+      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '10px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 80, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px', boxSizing: 'border-box' }}>
+          <div style={{ flex: '0 0 auto', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => navigate('/')}>
+            <img src={logoImg} alt="Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain', mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }} />
+          </div>
+          <div style={{ flex: '1 1 auto', maxWidth: '400px', margin: '0 20px', position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: colors.textMuted }} />
+            <input type="text" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ padding: '10px 10px 10px 40px', width: '100%', borderRadius: '12px', border: `1px solid ${colors.border}`, background: theme === 'light' ? '#f1f5f9' : '#1e293b', color: colors.text, outline: 'none' }} />
+          </div>
+          <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
+            {user ? (
+              <div style={{ position: 'relative' }} onMouseEnter={() => setShowUserMenu(true)} onMouseLeave={() => setShowUserMenu(false)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 12px', borderRadius: '12px', background: showUserMenu ? (theme === 'light' ? '#f1f5f9' : '#1e293b') : 'transparent', transition: 'background 0.2s' }}>
+                  <img src={user.picture || defaultGoogleAvatar} alt="Perfil" style={{ width: '35px', height: '35px', borderRadius: '50%', border: `2px solid ${colors.primary}`, objectFit: 'cover' }} />
+                  <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user.name?.split(' ')[0]}</span>
+                  <ChevronDown size={14} style={{ color: colors.textMuted, transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                </div>
+                {showUserMenu && (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '8px', zIndex: 100, width: '180px' }}>
+                    <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '14px', padding: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                      {/* CORREÇÃO 3: Adicionado o ?. antes do replace na navegação do menu */}
+                      <button onClick={() => navigate(`/${user?.name?.toLowerCase()?.replace(/\s+/g, '') || 'perfil'}`)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }} onMouseOver={(e) => e.currentTarget.style.background = pageBgColor} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <User size={16} /> Meu Perfil
+                      </button>
+                      <button onClick={() => navigate('/configuracoes')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }} onMouseOver={(e) => e.currentTarget.style.background = pageBgColor} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <Settings size={16} /> Configurações
+                      </button>
+                      <div style={{ height: '1px', background: colors.border, margin: '4px 0' }}></div>
+                      <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: '#ef4444', fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <LogOut size={16} /> Sair da conta
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (<GoogleLogin onSuccess={handleSuccess} theme={theme === 'dark' ? 'filled_black' : 'filled_blue'} shape="pill" />)}
           </div>
         </div>
       </header>
 
       <main style={{ flex: 1, paddingBottom: '60px' }}>
-        {/* HEADER DE PERFIL COM OPÇÕES DE EDIÇÃO */}
         <section style={{ position: 'relative', marginBottom: '80px' }}>
           <div style={{ height: '280px', background: profileData?.coverImg ? `url(${profileData.coverImg}) center/cover` : `linear-gradient(135deg, ${colors.primary}80, ${colors.primary})`, width: '100%', position: 'relative' }}>
             {isOwner && (
-              <label style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '10px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(4px)' }}>
+              <label style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '10px 16px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(4px)' }}>
                 <ImagePlus size={18} /> <span style={{ fontSize: '13px', fontWeight: '700' }}>Alterar Capa</span>
-                <input type="file" hidden accept="image/*" />
+                <input type="file" hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'cover')} />
               </label>
             )}
           </div>
@@ -110,9 +210,9 @@ export function ProfilePage() {
                     <img src={profileData?.profileImg} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                   {isOwner && (
-                    <label style={{ position: 'absolute', bottom: '10px', right: '10px', background: colors.primary, color: '#fff', padding: '8px', borderRadius: '50%', cursor: 'pointer', border: `4px solid ${pageBgColor}` }}>
-                      <Camera size={18} />
-                      <input type="file" hidden accept="image/*" />
+                    <label style={{ position: 'absolute', bottom: '10px', right: '10px', background: colors.primary, color: '#fff', padding: '10px', borderRadius: '50%', cursor: 'pointer', border: `4px solid ${pageBgColor}`, boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                      <Camera size={20} />
+                      <input type="file" hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'avatar')} />
                     </label>
                   )}
                 </div>
@@ -121,19 +221,17 @@ export function ProfilePage() {
                     {profileData?.fullName} <span style={{ fontSize: '20px', color: colors.textMuted, fontWeight: '500' }}>({profileData?.displayName})</span>
                   </h1>
                   <p style={{ color: colors.textMuted, fontWeight: '700', margin: '5px 0 0 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>
-                    <Briefcase size={18} color={colors.primary} /> {profileData?.role || 'Desenvolvedor'}
+                    <Briefcase size={18} color={colors.primary} /> {profileData?.role}
                   </p>
                 </div>
               </div>
+
               <div style={{ paddingBottom: '20px', display: 'flex', gap: '12px' }}>
                 {isOwner && (
-                  <button onClick={() => navigate('/completar-perfil')} style={{ background: colors.primary, color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: `0 4px 15px ${colors.primary}40` }}>
+                  <button onClick={() => setShowEditModal(true)} style={{ background: colors.primary, color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: `0 4px 15px ${colors.primary}40` }}>
                     <Edit3 size={18} /> Editar Perfil
                   </button>
                 )}
-                <button style={{ background: colors.card, border: `1px solid ${colors.border}`, color: colors.text, padding: '12px', borderRadius: '14px', cursor: 'pointer' }}>
-                  <Share2 size={20} />
-                </button>
               </div>
             </div>
           </div>
@@ -141,9 +239,22 @@ export function ProfilePage() {
 
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '1fr 2.5fr', gap: '40px' }}>
           
-          {/* SIDEBAR */}
           <aside style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-            <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '30px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            {/* ESTATÍSTICAS DO PERFIL */}
+            <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: colors.primary, display: 'flex', justifyContent: 'center', marginBottom: '5px' }}><Eye size={24} /></div>
+                <h4 style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>{profileData.stats.views}</h4>
+                <span style={{ fontSize: '12px', color: colors.textMuted, fontWeight: '700' }}>Visualizações</span>
+              </div>
+              <div style={{ textAlign: 'center', borderLeft: `1px solid ${colors.border}` }}>
+                <div style={{ color: colors.primary, display: 'flex', justifyContent: 'center', marginBottom: '5px' }}><ThumbsUp size={24} /></div>
+                <h4 style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>{profileData.stats.likes}</h4>
+                <span style={{ fontSize: '12px', color: colors.textMuted, fontWeight: '700' }}>Curtidas</span>
+              </div>
+            </div>
+
+            <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '30px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '20px' }}>Informações</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', fontWeight: '600' }}><MapPin size={18} color={colors.primary} /> {profileData?.location}</div>
@@ -155,84 +266,125 @@ export function ProfilePage() {
                 <p style={{ fontSize: '14px', lineHeight: '1.7', color: colors.textMuted, margin: 0 }}>{profileData?.bio}</p>
               </div>
             </div>
-
+            
             <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '30px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '20px' }}>Redes Sociais</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {profileData?.contacts?.github && (
-                  <a href={profileData.contacts.github} target="_blank" rel="noreferrer" style={{ color: colors.text, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '15px', fontWeight: '700' }}>
-                    <div style={{ background: pageBgColor, padding: '10px', borderRadius: '12px' }}><Github size={20} /></div> GitHub
-                  </a>
-                )}
-                {profileData?.contacts?.linkedin && (
-                  <a href={profileData.contacts.linkedin} target="_blank" rel="noreferrer" style={{ color: colors.text, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '15px', fontWeight: '700' }}>
-                    <div style={{ background: pageBgColor, padding: '10px', borderRadius: '12px' }}><Linkedin size={20} color="#0a66c2" /> LinkedIn</div>
-                  </a>
-                )}
-                <a href={`mailto:${profileData?.contacts?.publicEmail}`} style={{ color: colors.text, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '15px', fontWeight: '700' }}>
-                  <div style={{ background: pageBgColor, padding: '10px', borderRadius: '12px' }}><Mail size={20} color={colors.primary} /> Email</div>
-                </a>
+                <a href={profileData.contacts.github} target="_blank" rel="noreferrer" style={{ color: colors.text, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '15px', fontWeight: '700' }}><div style={{ background: pageBgColor, padding: '10px', borderRadius: '12px' }}><Github size={20} /></div> GitHub</a>
+                <a href={profileData.contacts.linkedin} target="_blank" rel="noreferrer" style={{ color: colors.text, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '15px', fontWeight: '700' }}><div style={{ background: pageBgColor, padding: '10px', borderRadius: '12px' }}><Linkedin size={20} color="#0a66c2" /> LinkedIn</div></a>
               </div>
             </div>
           </aside>
 
-          {/* CONTEÚDO PRINCIPAL */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* VITRINE DE PROJETOS COM FIXADOS */}
+            <section style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '35px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}><Code size={24} color={colors.primary} /> Portfólio de Projetos</h3>
+                {isOwner && <button style={{ background: colors.primary, color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}><PlusCircle size={18} /> Novo Projeto</button>}
+              </div>
+
+              {/* Renderiza os Projetos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                {userProjects.map(proj => (
+                  <article key={proj.id} style={{ border: `1px solid ${proj.isPinned ? colors.primary : colors.border}`, borderRadius: '20px', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}>
+                    {proj.isPinned && (
+                      <div style={{ position: 'absolute', top: '10px', right: '10px', background: colors.primary, color: '#fff', padding: '6px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10 }}>
+                        <Pin size={12} /> Fixado
+                      </div>
+                    )}
+                    <img src={proj.image} style={{ width: '100%', height: '140px', objectFit: 'cover' }} alt={proj.title} />
+                    <div style={{ padding: '20px', background: pageBgColor }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '900', color: colors.text }}>{proj.title}</h4>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {proj.skills.map((s:any) => (
+                          <span key={s.name} style={{ background: colors.card, border: `1px solid ${colors.border}`, padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: colors.textMuted }}>{s.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <section style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '35px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}><Cpu size={24} color={colors.primary} /> Stack Tecnológico</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
                 {profileData?.tools?.map((tool: string) => (
-                  <div key={tool} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: pageBgColor, padding: '12px 20px', borderRadius: '16px', border: `1px solid ${colors.border}`, fontSize: '15px', fontWeight: '800', transition: '0.2s' }}>
+                  <div key={tool} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: pageBgColor, padding: '12px 20px', borderRadius: '16px', border: `1px solid ${colors.border}`, fontSize: '15px', fontWeight: '800' }}>
                     <SkillIcon slug={tool} size={20} fallbackColor={colors.primary} /> {tool}
                   </div>
                 ))}
-              </div>
-            </section>
-
-            <section style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '35px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}><GraduationCap size={24} color={colors.primary} /> Formação Académica</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                {profileData?.education?.map((edu: any, idx: number) => (
-                  <div key={idx} style={{ display: 'flex', gap: '20px', position: 'relative' }}>
-                    <div style={{ background: `${colors.primary}15`, width: '50px', height: '50px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <GraduationCap size={26} color={colors.primary} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>{edu.fieldOfStudy}</h4>
-                      <p style={{ margin: '6px 0', fontSize: '15px', fontWeight: '700', color: colors.text }}>{edu.institution}</p>
-                      <div style={{ fontSize: '13px', color: colors.textMuted, fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Calendar size={14} /> {edu.startMonth} {edu.startYear} — {edu.endMonth} {edu.endYear}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', padding: '35px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}><Code size={24} color={colors.primary} /> Projetos Publicados</h3>
-                {isOwner && <button style={{ background: colors.primary, color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}><PlusCircle size={18} /> Adicionar</button>}
-              </div>
-              <div style={{ border: `2px dashed ${colors.border}`, padding: '60px 20px', borderRadius: '24px', textAlign: 'center', background: pageBgColor }}>
-                <Code size={40} style={{ marginBottom: '15px', opacity: 0.3 }} />
-                <p style={{ fontWeight: '700', color: colors.textMuted }}>O seu portfólio de projetos aparecerá aqui.</p>
               </div>
             </section>
           </div>
         </div>
       </main>
 
-      {/* FOOTER - IGUAL À HOME */}
-      <footer style={{ background: theme === 'light' ? '#f8fafc' : '#1a1a1a', color: colors.textMuted, padding: '3rem 1rem', display: 'flex', justifyContent: 'center', borderTop: `1px solid ${colors.border}`, marginTop: '40px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ fontSize: '0.875rem', textAlign: 'center', fontWeight: '700' }}>© 2026 Todos os direitos reservados.</div>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.875rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: '700' }}>
-            <a href="/termos" style={{ color: colors.textMuted, textDecoration: 'none' }}>Termos de Serviço</a>
-            <a href="/privacidade" style={{ color: colors.textMuted, textDecoration: 'none' }}>Política de Privacidade</a>
+      {/* MODAL EDITAR PERFIL COM CEP */}
+      {showEditModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowEditModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: colors.card, width: '90%', maxWidth: '600px', maxHeight: '90vh', borderRadius: '24px', overflowY: 'auto', border: `1px solid ${colors.border}`, position: 'relative' }}>
+            
+            <div style={{ padding: '25px 30px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: colors.card, zIndex: 10 }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '900', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}><Edit3 size={20} color={colors.primary} /> Editar Perfil</h2>
+              <button onClick={() => setShowEditModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.text }}><X size={24} /></button>
+            </div>
+
+            <div style={{ padding: '30px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>Cargo / Título</label>
+              <input type="text" value={editForm.role || ''} onChange={e => setEditForm({...editForm, role: e.target.value})} style={inputStyle} />
+
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>Sua Bio</label>
+              <textarea rows={4} value={editForm.bio || ''} onChange={e => setEditForm({...editForm, bio: e.target.value})} style={{ ...inputStyle, resize: 'none' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>CEP (Apenas números)</label>
+                  <input type="text" maxLength={8} value={editForm.cep || ''} onChange={handleCepChange} style={inputStyle} placeholder="Ex: 59600000" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>Cidade / Estado</label>
+                  <input type="text" value={editForm.location || ''} disabled style={{...inputStyle, opacity: 0.7, cursor: 'not-allowed'}} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>Senioridade</label>
+                  <select value={editForm.seniority || ''} onChange={e => setEditForm({...editForm, seniority: e.target.value})} style={inputStyle}>
+                    <option value="Estagiário">Estagiário</option>
+                    <option value="Júnior">Júnior</option>
+                    <option value="Pleno">Pleno</option>
+                    <option value="Sênior">Sênior</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>Nível de Inglês</label>
+                  <select value={editForm.englishLevel || ''} onChange={e => setEditForm({...editForm, englishLevel: e.target.value})} style={inputStyle}>
+                    <option value="Básico">Básico</option>
+                    <option value="Intermediário">Intermediário</option>
+                    <option value="Avançado">Avançado</option>
+                    <option value="Fluente">Fluente</option>
+                  </select>
+                </div>
+              </div>
+
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted, marginTop: '10px' }}>GitHub URL</label>
+              <input type="text" value={editForm.contacts?.github || ''} onChange={e => setEditForm({...editForm, contacts: {...editForm.contacts, github: e.target.value}})} style={inputStyle} />
+
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted }}>LinkedIn URL</label>
+              <input type="text" value={editForm.contacts?.linkedin || ''} onChange={e => setEditForm({...editForm, contacts: {...editForm.contacts, linkedin: e.target.value}})} style={inputStyle} />
+            </div>
+
+            <div style={{ padding: '20px 30px', borderTop: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'flex-end', gap: '15px', position: 'sticky', bottom: 0, background: colors.card }}>
+              <button onClick={() => setShowEditModal(false)} style={{ background: 'transparent', border: 'none', color: colors.text, fontWeight: '800', cursor: 'pointer', padding: '10px 20px' }}>Cancelar</button>
+              <button onClick={handleSaveProfile} style={{ background: colors.primary, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><Save size={18} /> Salvar Alterações</button>
+            </div>
           </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 }
