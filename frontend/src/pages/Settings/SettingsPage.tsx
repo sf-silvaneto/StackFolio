@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { api } from '../../services/api';
+import toast from 'react-hot-toast'; // Agora funcionará após o passo 1
 import { 
   Lock, Bell, Trash2, Shield, Download, Mail, Phone, Eye, 
   MessageCircle, Briefcase, User, Sun, Moon, ChevronDown, 
   LogOut, Save, UserMinus, Github, Linkedin, Link as LinkIcon,
-  CheckCircle 
+  CheckCircle, XCircle 
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
 
@@ -18,7 +19,6 @@ export function SettingsPage() {
   
   const [activeTab, setActiveTab] = useState('personal');
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showToast, setShowToast] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [personalForm, setPersonalForm] = useState({
@@ -41,7 +41,6 @@ export function SettingsPage() {
     showSocial: true
   });
 
-  // BUSCA OS DADOS NO BANCO QUANDO A TELA ABRE
   useEffect(() => {
     if (user?.id) {
       api.get(`/users/${user.id}`).then((response) => {
@@ -58,56 +57,47 @@ export function SettingsPage() {
           github: dbUser.github || '',
           linkedin: dbUser.linkedin || ''
         });
-        
         setToggles({
           publicEmail: dbUser.publicEmail ?? true,
           profileVisibility: dbUser.profileVisibility ?? true,
           showLocation: dbUser.showLocation ?? true,
           showSocial: dbUser.showSocial ?? true
         });
-      }).catch(err => console.error("Erro ao buscar dados do usuário:", err));
+      }).catch(err => {
+        console.error(err);
+        toast.error("Erro ao carregar dados.");
+      });
     }
   }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let { name, value, type, checked } = e.target;
-
-    // Máscara Automática para o Telefone: +55 (XX) XXXXX-XXXX
     if (name === 'phone') {
       let v = value.replace(/\D/g, ''); 
       if (v.startsWith('55')) v = v.substring(2); 
       v = v.substring(0, 11); 
-      
       if (v.length > 0) {
         value = '+55 ';
         if (v.length > 0) value += `(${v.substring(0, 2)}`;
         if (v.length >= 3) value += `) ${v.substring(2, 7)}`;
         if (v.length >= 8) value += `-${v.substring(7, 11)}`;
-      } else {
-        value = '';
-      }
+      } else { value = ''; }
     }
-
-    setPersonalForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setPersonalForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleToggle = (name: keyof typeof toggles) => {
     setToggles(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
-  // ENVIA OS DADOS PARA O NESTJS COM TOAST DE SUCESSO
   const handleSave = async () => {
-    // 1. Verificação de segurança: Se não houver usuário logado, não faz nada
     if (!user || !user.id) {
-      alert('Sessão expirada ou usuário não encontrado. Por favor, faça login novamente.');
+      toast.error('Sessão expirada. Faça login novamente.');
       return;
     }
 
     if (personalForm.altEmail && !personalForm.altEmail.includes('@')) {
-      alert('O E-mail alternativo é inválido. Certifique-se de incluir o "@".');
+      toast.error('E-mail alternativo inválido.');
       return;
     }
     
@@ -126,17 +116,15 @@ export function SettingsPage() {
         ...toggles 
       };
 
-      // 2. Usando user?.id com interrogação para evitar o crash caso seja null
       const response = await api.patch(`/users/${user?.id}`, updatePayload);
-      
       if (updateUser) updateUser(response.data); 
       
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      // PADRÃO DE SUCESSO
+      toast.success('Alterações salvas com sucesso!');
 
     } catch (error) {
-      console.error('Erro ao salvar as configurações:', error);
-      alert('Erro ao guardar alterações. Verifique sua conexão.');
+      // PADRÃO DE ERRO IGUAL AO DE SALVAMENTO
+      toast.error('Erro ao guardar alterações.');
     } finally {
       setIsLoading(false);
     }
@@ -371,6 +359,11 @@ export function SettingsPage() {
                 </div>
               ))}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button disabled={isLoading} onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: colors.primary, color: '#fff', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                 Guardar Privacidade
+              </button>
+            </div>
           </div>
         );
 
@@ -384,28 +377,18 @@ export function SettingsPage() {
 
             <div style={{ padding: '24px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
               <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold', color: colors.text, display: 'flex', alignItems: 'center', gap: '8px' }}><Download size={18} /> Baixar Meus Dados</h4>
-              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Faça o download de todas as informações, projetos e configurações vinculadas à sua conta.</p>
-              <button style={{ backgroundColor: colors.background, color: colors.text, border: `1px solid ${colors.border}`, padding: '10px 20px', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = colors.background}>
+              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Faça o download de todas as informações vinculadas à sua conta.</p>
+              <button style={{ backgroundColor: colors.background, color: colors.text, border: `1px solid ${colors.border}`, padding: '10px 20px', borderRadius: '12px', fontWeight: '600', cursor: 'pointer' }}>
                 Solicitar Download (JSON)
-              </button>
-            </div>
-
-            <div style={{ padding: '24px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
-              <h4 style={{ color: '#f59e0b', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><UserMinus size={18} /> Desativar Conta</h4>
-              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>O seu perfil ficará invisível para o público, mas poderá reativar a qualquer momento fazendo login.</p>
-              <button style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#f59e0b'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)'}>
-                Desativar temporariamente
               </button>
             </div>
 
             <div style={{ padding: '24px', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.02)' }}>
               <h4 style={{ color: '#ef4444', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Trash2 size={18} /> Apagar Definitivamente</h4>
-              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Ao apagar a conta, todos os seus projetos e informações serão perdidos. Esta ação é irreversível.</p>
+              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Esta ação é irreversível.</p>
               <button 
-                onClick={() => { if(window.confirm('Tem a certeza absoluta? Esta ação não pode ser desfeita.')) alert('Conta em processo de exclusão...'); }} 
-                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }} 
-                onMouseOver={(e) => e.currentTarget.style.background = '#ef4444'} 
-                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                onClick={() => { toast.error('Ação não permitida no modo de demonstração.'); }} 
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }} 
               >
                 Apagar Conta
               </button>
@@ -449,17 +432,13 @@ export function SettingsPage() {
                 <div style={{ position: 'absolute', right: 0, top: '45px', width: '200px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, overflow: 'hidden' }}>
                   <button 
                     onClick={() => navigate('/home')} 
-                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: colors.text, backgroundColor: 'transparent', border: 'none', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)'} 
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: colors.text, backgroundColor: 'transparent', border: 'none', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                   >
                     <User size={16} /> Voltar ao Perfil
                   </button>
                   <button 
                     onClick={logout} 
-                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: '#ef4444', backgroundColor: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.05)'} 
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: '#ef4444', backgroundColor: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                   >
                     <LogOut size={16} /> Sair da conta
                   </button>
@@ -477,7 +456,7 @@ export function SettingsPage() {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button 
               onClick={() => setActiveTab('personal')}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', 
                 backgroundColor: activeTab === 'personal' ? colors.primary : 'transparent',
                 color: activeTab === 'personal' ? '#fff' : colors.text
               }}
@@ -486,7 +465,7 @@ export function SettingsPage() {
             </button>
             <button 
               onClick={() => setActiveTab('privacy')}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none',
                 backgroundColor: activeTab === 'privacy' ? colors.primary : 'transparent',
                 color: activeTab === 'privacy' ? '#fff' : colors.text
               }}
@@ -495,7 +474,7 @@ export function SettingsPage() {
             </button>
             <button 
               onClick={() => setActiveTab('security')}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none',
                 backgroundColor: activeTab === 'security' ? colors.primary : 'transparent',
                 color: activeTab === 'security' ? '#fff' : colors.text
               }}
@@ -510,38 +489,6 @@ export function SettingsPage() {
         </div>
 
       </main>
-
-      {/* NOTIFICAÇÃO TOAST FLUTUANTE */}
-      {showToast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '40px',
-          right: '40px',
-          backgroundColor: '#10b981',
-          color: '#ffffff',
-          padding: '16px 24px',
-          borderRadius: '16px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          zIndex: 9999,
-          animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}>
-          <CheckCircle size={24} />
-          <div>
-            <h4 style={{ margin: 0, fontWeight: '800', fontSize: '15px' }}>Sucesso!</h4>
-            <p style={{ margin: 0, fontSize: '13px', opacity: 0.9 }}>As suas alterações foram guardadas.</p>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(100px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
