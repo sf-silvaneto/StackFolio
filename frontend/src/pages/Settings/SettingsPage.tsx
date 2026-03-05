@@ -1,385 +1,546 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Lock, Bell, Trash2, Shield, Download, Mail, Phone, Eye, MessageCircle, Briefcase, User, Sun, Moon, ChevronDown, LogOut, Save, UserMinus, Github, Linkedin, Link as LinkIcon } from 'lucide-react';
+import { api } from '../../services/api';
+import { 
+  Lock, Bell, Trash2, Shield, Download, Mail, Phone, Eye, 
+  MessageCircle, Briefcase, User, Sun, Moon, ChevronDown, 
+  LogOut, Save, UserMinus, Github, Linkedin, Link as LinkIcon,
+  CheckCircle 
+} from 'lucide-react';
 import logoImg from '../../assets/logo.png';
 
 export function SettingsPage() {
-  const { user, logout } = useAuth() as any;
-  const { theme, toggleTheme, colors } = useTheme() as any;
+  const { user, logout, updateUser } = useAuth() as any; 
+  const { theme, colors } = useTheme() as any;
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('personal');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [personalForm, setPersonalForm] = useState({
     fullName: user?.name || '',
-    nickname: user?.name?.split(' ')[0] || '',
-    customLink: user?.name?.toLowerCase().replace(/\s+/g, '').substring(0, 15) || '',
-    dob: '',
+    nickname: '',
+    customLink: '',
     phone: '',
     isWhatsApp: false, 
     email: user?.email || '',
-    altEmail: '',      
+    altEmail: '',
+    primaryEmailChoice: 'google', 
     github: '',
     linkedin: ''
   });
 
   const [toggles, setToggles] = useState({
     publicEmail: true,
-    publicPhone: false,
     profileVisibility: true,
-    emailComments: true,
-    emailJobs: false
+    showLocation: true,
+    showSocial: true
   });
 
-  const handleToggle = (key: keyof typeof toggles) => {
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let input = e.target.value.replace(/\D/g, '');
-    if (input.startsWith('55') && input.length >= 12) input = input.substring(2);
-    if (input.length > 11) input = input.substring(0, 11);
-    if (input.length === 0) {
-      setPersonalForm({ ...personalForm, phone: '' });
-      return;
+  // BUSCA OS DADOS NO BANCO QUANDO A TELA ABRE
+  useEffect(() => {
+    if (user?.id) {
+      api.get(`/users/${user.id}`).then((response) => {
+        const dbUser = response.data;
+        setPersonalForm({
+          fullName: dbUser.name || user.name || '',
+          nickname: dbUser.nickname || '',
+          customLink: dbUser.customLink || '',
+          phone: dbUser.phone || '',
+          isWhatsApp: dbUser.isWhatsApp || false,
+          email: dbUser.email || user.email || '',
+          altEmail: dbUser.altEmail || '',
+          primaryEmailChoice: dbUser.primaryEmailChoice || 'google',
+          github: dbUser.github || '',
+          linkedin: dbUser.linkedin || ''
+        });
+        
+        setToggles({
+          publicEmail: dbUser.publicEmail ?? true,
+          profileVisibility: dbUser.profileVisibility ?? true,
+          showLocation: dbUser.showLocation ?? true,
+          showSocial: dbUser.showSocial ?? true
+        });
+      }).catch(err => console.error("Erro ao buscar dados do usuário:", err));
     }
-    let formatted = input;
-    if (input.length > 0) formatted = '(' + input;
-    if (input.length > 2) formatted = '(' + input.substring(0,2) + ') ' + input.substring(2);
-    if (input.length > 7) formatted = '(' + input.substring(0,2) + ') ' + input.substring(2,7) + '-' + input.substring(7);
-    setPersonalForm({ ...personalForm, phone: formatted });
-  };
+  }, [user]);
 
-  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 15);
-    setPersonalForm({ ...personalForm, customLink: val });
-  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let { name, value, type, checked } = e.target;
 
-  const handleGithubChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/(https?:\/\/)?(www\.)?github\.com\//i, '').replace(/[^a-zA-Z0-9-]/g, '');
-    setPersonalForm({ ...personalForm, github: val });
-  };
-
-  const handleLinkedinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/(https?:\/\/)?(www\.)?linkedin\.com\/in\//i, '').replace(/[^a-zA-Z0-9-]/g, '');
-    setPersonalForm({ ...personalForm, linkedin: val });
-  };
-
-  const handleSavePersonalData = () => {
-    if (personalForm.altEmail.trim() !== '') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(personalForm.altEmail)) {
-        alert('❌ Por favor, insira um e-mail válido com @ (exemplo: nome@dominio.com).');
-        return;
+    // Máscara Automática para o Telefone: +55 (XX) XXXXX-XXXX
+    if (name === 'phone') {
+      let v = value.replace(/\D/g, ''); 
+      if (v.startsWith('55')) v = v.substring(2); 
+      v = v.substring(0, 11); 
+      
+      if (v.length > 0) {
+        value = '+55 ';
+        if (v.length > 0) value += `(${v.substring(0, 2)}`;
+        if (v.length >= 3) value += `) ${v.substring(2, 7)}`;
+        if (v.length >= 8) value += `-${v.substring(7, 11)}`;
+      } else {
+        value = '';
       }
     }
-    alert('✅ Dados atualizados com sucesso!');
+
+    setPersonalForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
-  const pageBgColor = theme === 'light' ? '#f8fafc' : '#0f172a';
-  const defaultGoogleAvatar = "https://lh3.googleusercontent.com/a/default-user=s96-c";
-
-  if (!colors || !user) return null;
-
-  const inputStyle = { 
-    width: '100%', padding: '14px', borderRadius: '12px', border: `1px solid ${colors.border}`, 
-    background: pageBgColor, color: colors.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' as 'border-box'
-  };
-  
-  const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: colors.textMuted };
-  
-  const prefixStyle = { 
-    padding: '14px 15px', background: theme === 'light' ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.02)', 
-    color: colors.textMuted, fontSize: '14px', borderRight: `1px solid ${colors.border}`, 
-    fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px' 
+  const handleToggle = (name: keyof typeof toggles) => {
+    setToggles(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
-  const ToggleSwitch = ({ isOn, onClick }: { isOn: boolean, onClick: () => void }) => (
-    <div onClick={(e) => { e.stopPropagation(); onClick(); }} style={{
-      width: '46px', height: '24px', background: isOn ? colors.primary : (theme === 'light' ? '#cbd5e1' : '#475569'),
-      borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s ease', flexShrink: 0
-    }}>
-      <div style={{
-        width: '18px', height: '18px', background: '#fff', borderRadius: '50%',
-        position: 'absolute', top: '3px', left: isOn ? '25px' : '3px',
-        transition: 'left 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2)', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-      }} />
-    </div>
-  );
+  // ENVIA OS DADOS PARA O NESTJS COM TOAST DE SUCESSO
+  const handleSave = async () => {
+    // 1. Verificação de segurança: Se não houver usuário logado, não faz nada
+    if (!user || !user.id) {
+      alert('Sessão expirada ou usuário não encontrado. Por favor, faça login novamente.');
+      return;
+    }
 
-  const TabButton = ({ id, icon: Icon, label }: any) => (
-    <button 
-      onClick={() => setActiveTab(id)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', width: '100%',
-        background: activeTab === id ? `${colors.primary}15` : 'transparent',
-        color: activeTab === id ? colors.primary : colors.textMuted,
-        border: 'none', borderRadius: '14px', fontWeight: '800', fontSize: '15px', cursor: 'pointer',
-        textAlign: 'left', transition: 'all 0.2s'
-      }}
-    >
-      <Icon size={20} /> {label}
-    </button>
-  );
+    if (personalForm.altEmail && !personalForm.altEmail.includes('@')) {
+      alert('O E-mail alternativo é inválido. Certifique-se de incluir o "@".');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const updatePayload = {
+        name: personalForm.fullName,
+        nickname: personalForm.nickname,
+        customLink: personalForm.customLink,
+        phone: personalForm.phone,
+        isWhatsApp: personalForm.isWhatsApp,
+        altEmail: personalForm.altEmail,
+        primaryEmailChoice: personalForm.primaryEmailChoice,
+        github: personalForm.github,
+        linkedin: personalForm.linkedin,
+        ...toggles 
+      };
 
-  return (
-    <div style={{ background: pageBgColor, minHeight: '100vh', color: colors.text }}>
+      // 2. Usando user?.id com interrogação para evitar o crash caso seja null
+      const response = await api.patch(`/users/${user?.id}`, updatePayload);
       
-      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '10px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 80, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px', boxSizing: 'border-box' }}>
-          <div style={{ flex: '0 0 auto', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => navigate('/')}>
-            <img src={logoImg} alt="StackFolio Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain', mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }} />
-          </div>
+      if (updateUser) updateUser(response.data); 
+      
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
 
-          <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+    } catch (error) {
+      console.error('Erro ao salvar as configurações:', error);
+      alert('Erro ao guardar alterações. Verifique sua conexão.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const isValidAltEmail = personalForm.altEmail && personalForm.altEmail.includes('@');
 
-            <div style={{ position: 'relative' }} onMouseEnter={() => setShowUserMenu(true)} onMouseLeave={() => setShowUserMenu(false)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 12px', borderRadius: '12px', background: showUserMenu ? (theme === 'light' ? '#f1f5f9' : '#1e293b') : 'transparent', transition: 'background 0.2s' }}>
-                <img src={user?.picture || defaultGoogleAvatar} alt="Perfil" style={{ width: '35px', height: '35px', borderRadius: '50%', border: `2px solid ${colors.primary}`, objectFit: 'cover' }} />
-                <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user?.name?.split(' ')[0] || 'Perfil'}</span>
-                <ChevronDown size={14} style={{ color: colors.textMuted, transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'personal':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h3 style={{ color: colors.text, fontSize: '24px', fontWeight: '900', marginBottom: '8px' }}>Informações Pessoais</h3>
+              <p style={{ color: colors.textMuted, fontSize: '14px' }}>Atualize os seus dados básicos e links de contacto.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>Nome Completo</label>
+                <input 
+                  type="text" 
+                  name="fullName"
+                  maxLength={30}
+                  value={personalForm.fullName}
+                  onChange={handleInputChange}
+                  placeholder="Seu nome completo"
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, outline: 'none' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>Apelido / Nome Curto</label>
+                <input 
+                  type="text" 
+                  name="nickname"
+                  maxLength={15}
+                  value={personalForm.nickname}
+                  onChange={handleInputChange}
+                  placeholder="Como quer ser chamado?"
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, outline: 'none' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>Link do Perfil (URL Customizada)</label>
+              <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden', backgroundColor: colors.background }}>
+                <span style={{ padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.03)', color: colors.textMuted, borderRight: `1px solid ${colors.border}`, fontSize: '14px' }}>stackfolio.com/</span>
+                <input 
+                  type="text" 
+                  name="customLink"
+                  maxLength={15}
+                  value={personalForm.customLink}
+                  onChange={handleInputChange}
+                  placeholder="seulink"
+                  style={{ width: '100%', padding: '12px', border: 'none', backgroundColor: 'transparent', color: colors.text, outline: 'none' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ padding: '20px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
+              <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: colors.text }}>Configuração de E-mail</h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>E-mail do Google (Conta)</label>
+                  <input 
+                    type="email" 
+                    value={personalForm.email}
+                    disabled
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: 'rgba(0,0,0,0.02)', color: colors.textMuted, cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>E-mail Alternativo</label>
+                  <input 
+                    type="email" 
+                    name="altEmail"
+                    maxLength={254}
+                    value={personalForm.altEmail}
+                    onChange={handleInputChange}
+                    placeholder="email@exemplo.com"
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, outline: 'none' }}
+                  />
+                </div>
               </div>
 
-              {showUserMenu && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '8px', zIndex: 100, width: '180px' }}>
-                  <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '14px', padding: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-                    <button onClick={() => navigate(`/${user?.name?.toLowerCase()?.replace(/\s+/g, '') || 'perfil'}`)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = pageBgColor} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                      <User size={16} /> Meu Perfil
-                    </button>
-                    <div style={{ height: '1px', background: colors.border, margin: '4px 0' }}></div>
-                    <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: '#ef4444', fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                      <LogOut size={16} /> Sair da conta
-                    </button>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', color: colors.text, marginBottom: '12px' }}>Qual e-mail deve aparecer público no perfil?</p>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <label style={{ 
+                    flex: 1, padding: '14px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s',
+                    border: `2px solid ${personalForm.primaryEmailChoice === 'google' ? colors.primary : colors.border}`,
+                    backgroundColor: personalForm.primaryEmailChoice === 'google' ? `${colors.primary}10` : 'transparent'
+                  }}>
+                    <input type="radio" name="primaryEmailChoice" value="google" checked={personalForm.primaryEmailChoice === 'google'} onChange={handleInputChange} style={{ accentColor: colors.primary, width: '18px', height: '18px' }} />
+                    <div>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: colors.text }}>E-mail da Conta</span>
+                      <span style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginTop: '2px' }}>{personalForm.email || 'Não definido'}</span>
+                    </div>
+                  </label>
+
+                  <label style={{ 
+                    flex: 1, padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s',
+                    border: `2px solid ${personalForm.primaryEmailChoice === 'alternative' ? colors.primary : colors.border}`,
+                    backgroundColor: personalForm.primaryEmailChoice === 'alternative' ? `${colors.primary}10` : 'transparent',
+                    cursor: isValidAltEmail ? 'pointer' : 'not-allowed',
+                    opacity: isValidAltEmail ? 1 : 0.5
+                  }}>
+                    <input type="radio" name="primaryEmailChoice" value="alternative" checked={personalForm.primaryEmailChoice === 'alternative'} onChange={handleInputChange} disabled={!isValidAltEmail} style={{ accentColor: colors.primary, width: '18px', height: '18px' }} />
+                    <div>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', color: colors.text }}>E-mail Alternativo</span>
+                      <span style={{ display: 'block', fontSize: '12px', color: colors.textMuted, marginTop: '2px' }}>{isValidAltEmail ? personalForm.altEmail : 'Preencha um e-mail válido com @'}</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>Telemóvel / Telefone</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <input 
+                  type="tel" 
+                  name="phone"
+                  value={personalForm.phone}
+                  onChange={handleInputChange}
+                  placeholder="+55 (00) 00000-0000"
+                  style={{ flex: 1, padding: '12px', borderRadius: '12px', border: `1px solid ${colors.border}`, backgroundColor: colors.background, color: colors.text, outline: 'none' }}
+                />
+                
+                <label style={{ 
+                  display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px 20px', 
+                  backgroundColor: personalForm.isWhatsApp ? '#22c55e' : 'rgba(34, 197, 94, 0.05)', 
+                  border: `1px solid ${personalForm.isWhatsApp ? '#22c55e' : 'rgba(34, 197, 94, 0.2)'}`, 
+                  borderRadius: '12px', transition: 'all 0.2s'
+                }}>
+                  <MessageCircle size={20} color={personalForm.isWhatsApp ? '#fff' : '#22c55e'} />
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: personalForm.isWhatsApp ? '#fff' : colors.text }}>É WhatsApp?</span>
+                  <input 
+                    type="checkbox" 
+                    name="isWhatsApp"
+                    checked={personalForm.isWhatsApp}
+                    onChange={handleInputChange}
+                    style={{ width: '18px', height: '18px', accentColor: '#16a34a', marginLeft: '4px' }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <hr style={{ borderColor: colors.border, margin: '16px 0' }} />
+            
+            <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>Redes Sociais</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>
+                  <Github size={16} /> GitHub
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden', backgroundColor: colors.background }}>
+                  <span style={{ padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.03)', color: colors.textMuted, borderRight: `1px solid ${colors.border}`, fontSize: '14px' }}>github.com/</span>
+                  <input 
+                    type="text" 
+                    name="github"
+                    maxLength={39} 
+                    value={personalForm.github}
+                    onChange={handleInputChange}
+                    placeholder="usuario"
+                    style={{ width: '100%', padding: '12px', border: 'none', backgroundColor: 'transparent', color: colors.text, outline: 'none' }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: colors.text }}>
+                  <Linkedin size={16} /> LinkedIn
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden', backgroundColor: colors.background }}>
+                  <span style={{ padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.03)', color: colors.textMuted, borderRight: `1px solid ${colors.border}`, fontSize: '14px' }}>linkedin.com/in/</span>
+                  <input 
+                    type="text" 
+                    name="linkedin"
+                    maxLength={30}
+                    value={personalForm.linkedin}
+                    onChange={handleInputChange}
+                    placeholder="usuario"
+                    style={{ width: '100%', padding: '12px', border: 'none', backgroundColor: 'transparent', color: colors.text, outline: 'none' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifySelf: 'flex-end', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button disabled={isLoading} onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: colors.primary, color: '#fff', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', border: 'none', cursor: isLoading ? 'wait' : 'pointer', transition: 'transform 0.2s', opacity: isLoading ? 0.7 : 1 }} onMouseOver={(e) => !isLoading && (e.currentTarget.style.transform = 'scale(1.02)')} onMouseOut={(e) => !isLoading && (e.currentTarget.style.transform = 'scale(1)')}>
+                <Save size={18} /> {isLoading ? 'A Guardar...' : 'Guardar Alterações'}
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'privacy':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h3 style={{ color: colors.text, fontSize: '24px', fontWeight: '900', marginBottom: '8px' }}>Privacidade do Perfil</h3>
+              <p style={{ color: colors.textMuted, fontSize: '14px' }}>Controle exatamente quais informações ficam públicas no seu portfólio online.</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                { id: 'profileVisibility', title: 'Perfil Público', desc: 'Permite que qualquer pessoa aceda ao seu portfólio através do link.', icon: <Eye size={20} /> },
+                { id: 'publicEmail', title: 'Mostrar E-mail', desc: 'Exibe o seu e-mail de contacto para os visitantes do perfil.', icon: <Mail size={20} /> },
+                { id: 'showLocation', title: 'Mostrar Localização', desc: 'Exibe a sua cidade e estado no topo do seu portfólio.', icon: <User size={20} /> },
+                { id: 'showSocial', title: 'Mostrar Redes Sociais', desc: 'Ativa os botões para o seu GitHub e LinkedIn no perfil.', icon: <LinkIcon size={20} /> }
+              ].map((item) => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: '12px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.04)', color: colors.text }}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontWeight: 'bold', color: colors.text, fontSize: '16px' }}>{item.title}</h4>
+                      <p style={{ margin: '4px 0 0 0', color: colors.textMuted, fontSize: '13px' }}>{item.desc}</p>
+                    </div>
                   </div>
+                  
+                  <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={toggles[item.id as keyof typeof toggles]} onChange={() => handleToggle(item.id as keyof typeof toggles)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+                    <div style={{ width: '44px', height: '24px', backgroundColor: toggles[item.id as keyof typeof toggles] ? colors.primary : '#e5e7eb', borderRadius: '9999px', transition: 'background-color 0.2s', position: 'relative' }}>
+                      <span style={{ position: 'absolute', top: '2px', left: toggles[item.id as keyof typeof toggles] ? '22px' : '2px', width: '20px', height: '20px', backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} />
+                    </div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'security':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h3 style={{ color: colors.text, fontSize: '24px', fontWeight: '900', marginBottom: '8px' }}>Segurança e Dados</h3>
+              <p style={{ color: colors.textMuted, fontSize: '14px' }}>Faça a gestão dos seus dados na plataforma.</p>
+            </div>
+
+            <div style={{ padding: '24px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold', color: colors.text, display: 'flex', alignItems: 'center', gap: '8px' }}><Download size={18} /> Baixar Meus Dados</h4>
+              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Faça o download de todas as informações, projetos e configurações vinculadas à sua conta.</p>
+              <button style={{ backgroundColor: colors.background, color: colors.text, border: `1px solid ${colors.border}`, padding: '10px 20px', borderRadius: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = colors.background}>
+                Solicitar Download (JSON)
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', border: `1px solid ${colors.border}`, borderRadius: '12px', backgroundColor: colors.surface }}>
+              <h4 style={{ color: '#f59e0b', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><UserMinus size={18} /> Desativar Conta</h4>
+              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>O seu perfil ficará invisível para o público, mas poderá reativar a qualquer momento fazendo login.</p>
+              <button style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#f59e0b'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)'}>
+                Desativar temporariamente
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.02)' }}>
+              <h4 style={{ color: '#ef4444', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Trash2 size={18} /> Apagar Definitivamente</h4>
+              <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Ao apagar a conta, todos os seus projetos e informações serão perdidos. Esta ação é irreversível.</p>
+              <button 
+                onClick={() => { if(window.confirm('Tem a certeza absoluta? Esta ação não pode ser desfeita.')) alert('Conta em processo de exclusão...'); }} 
+                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }} 
+                onMouseOver={(e) => e.currentTarget.style.background = '#ef4444'} 
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+              >
+                Apagar Conta
+              </button>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background, fontFamily: 'Inter, sans-serif' }}>
+      
+      {/* Navbar Superior */}
+      <nav style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.surface, position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ width: '100%', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '64px' }}>
+          
+          <div style={{ flex: '0 0 auto', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => navigate('/home')}>
+            <img 
+              src={logoImg} 
+              alt="StackFolio Logo" 
+              style={{ height: '50px', width: 'auto', objectFit: 'contain', mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px 4px 4px', borderRadius: '99px', border: `1px solid ${colors.border}`, backgroundColor: colors.background, cursor: 'pointer' }}
+              >
+                <div style={{ height: '32px', width: '32px', borderRadius: '50%', backgroundColor: colors.primary, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                  {user?.name?.charAt(0) || 'S'}
+                </div>
+                <ChevronDown size={14} style={{ color: colors.textMuted }} />
+              </button>
+              
+              {showUserMenu && (
+                <div style={{ position: 'absolute', right: 0, top: '45px', width: '200px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: `1px solid ${colors.border}`, backgroundColor: colors.surface, overflow: 'hidden' }}>
+                  <button 
+                    onClick={() => navigate('/home')} 
+                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: colors.text, backgroundColor: 'transparent', border: 'none', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)'} 
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <User size={16} /> Voltar ao Perfil
+                  </button>
+                  <button 
+                    onClick={logout} 
+                    style={{ width: '100%', textAlign: 'left', padding: '16px', fontSize: '14px', fontWeight: 'bold', color: '#ef4444', backgroundColor: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.05)'} 
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <LogOut size={16} /> Sair da conta
+                  </button>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main style={{ maxWidth: '1200px', margin: '60px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '250px 1fr', gap: '40px' }}>
+      <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 24px', display: 'flex', gap: '40px', alignItems: 'flex-start' }}>
         
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '20px', paddingLeft: '10px' }}>Ajustes</h2>
-          <TabButton id="personal" icon={User} label="Dados Pessoais" />
-          <TabButton id="privacy" icon={Shield} label="Privacidade" />
-          <TabButton id="notifications" icon={Bell} label="Notificações" />
-          <TabButton id="account" icon={Lock} label="Conta e Segurança" />
+        <aside style={{ width: '250px', flexShrink: 0 }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', color: colors.text, margin: '0 0 24px 0', letterSpacing: '-1px' }}>Configurações</h1>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button 
+              onClick={() => setActiveTab('personal')}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+                backgroundColor: activeTab === 'personal' ? colors.primary : 'transparent',
+                color: activeTab === 'personal' ? '#fff' : colors.text
+              }}
+            >
+              <User size={18} /> Pessoais
+            </button>
+            <button 
+              onClick={() => setActiveTab('privacy')}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+                backgroundColor: activeTab === 'privacy' ? colors.primary : 'transparent',
+                color: activeTab === 'privacy' ? '#fff' : colors.text
+              }}
+            >
+              <Shield size={18} /> Privacidade
+            </button>
+            <button 
+              onClick={() => setActiveTab('security')}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+                backgroundColor: activeTab === 'security' ? colors.primary : 'transparent',
+                color: activeTab === 'security' ? '#fff' : colors.text
+              }}
+            >
+              <Lock size={18} /> Segurança
+            </button>
+          </nav>
         </aside>
 
-        {/* CARTÃO PRINCIPAL */}
-        <div style={{ background: colors.card, borderRadius: '32px', border: `1px solid ${colors.border}`, padding: '40px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-          
-          {/* WRAPPER CENTRALIZADO PARA OS FORMULÁRIOS */}
-          <div style={{ maxWidth: '650px', margin: '0 auto' }}>
-            
-            {/* ABA 1: DADOS PESSOAIS */}
-            {activeTab === 'personal' && (
-              <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}><User size={22} color={colors.primary} /> Dados Pessoais</h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={labelStyle}>Nome Completo</label>
-                    <input type="text" maxLength={30} value={personalForm.fullName} onChange={(e) => setPersonalForm({...personalForm, fullName: e.target.value})} style={inputStyle} placeholder="Máx 30 caracteres" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Apelido / Nome de Exibição</label>
-                    <input type="text" maxLength={15} value={personalForm.nickname} onChange={(e) => setPersonalForm({...personalForm, nickname: e.target.value})} style={inputStyle} placeholder="Máx 15 caracteres" />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={labelStyle}>Link do Perfil</label>
-                  <div style={{ display: 'flex', alignItems: 'center', background: pageBgColor, border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden' }}>
-                    <span style={prefixStyle}>stackfolio.com/</span>
-                    <input type="text" maxLength={15} value={personalForm.customLink} onChange={handleLinkChange} style={{ flex: 1, padding: '14px', border: 'none', background: 'transparent', color: colors.text, fontSize: '14px', outline: 'none' }} placeholder="seu-link" />
-                  </div>
-                  <span style={{ fontSize: '11px', color: colors.textMuted, display: 'block', marginTop: '6px' }}>Máx 15 caracteres. Apenas letras minúsculas, números e traços.</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={labelStyle}>Data de Nascimento</label>
-                    <input type="date" value={personalForm.dob} onChange={(e) => setPersonalForm({...personalForm, dob: e.target.value})} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Gênero</label>
-                    <select value={personalForm.gender} onChange={(e) => setPersonalForm({...personalForm, gender: e.target.value})} style={inputStyle}>
-                      <option value="Masculino">Masculino</option>
-                      <option value="Feminino">Feminino</option>
-                      <option value="Prefiro não informar">Prefiro não informar</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '35px' }}>
-                  <div>
-                    <label style={labelStyle}>Número de Telefone</label>
-                    <div style={{ display: 'flex', alignItems: 'center', background: pageBgColor, border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden' }}>
-                      <span style={prefixStyle}>+55</span>
-                      <input type="tel" value={personalForm.phone} onChange={handlePhoneChange} style={{ flex: 1, padding: '14px', border: 'none', background: 'transparent', color: colors.text, fontSize: '14px', outline: 'none' }} placeholder="(00) 00000-0000" />
-                    </div>
-                    
-                    <div onClick={() => setPersonalForm({...personalForm, isWhatsApp: !personalForm.isWhatsApp})} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px', padding: '10px 14px', background: pageBgColor, border: `1px solid ${personalForm.isWhatsApp ? colors.primary : colors.border}`, borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                      <ToggleSwitch isOn={personalForm.isWhatsApp} onClick={() => setPersonalForm({...personalForm, isWhatsApp: !personalForm.isWhatsApp})} /> 
-                      <span style={{ fontSize: '13px', fontWeight: '800', color: personalForm.isWhatsApp ? colors.text : colors.textMuted }}>Ativar contacto por WhatsApp</span>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label style={labelStyle}>E-mail Principal</label>
-                    <input type="email" value={personalForm.email} style={{...inputStyle, opacity: 0.7, cursor: 'not-allowed', marginBottom: '12px'}} disabled title="Gerenciado pelo Google" />
-                    
-                    <label style={labelStyle}>E-mail Alternativo (Opcional)</label>
-                    <input type="email" value={personalForm.altEmail} onChange={e => setPersonalForm({...personalForm, altEmail: e.target.value})} style={{...inputStyle, marginBottom: 0}} placeholder="Opcional: contato@seudominio.com" />
-                  </div>
-                </div>
-
-                <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px', borderTop: `1px solid ${colors.border}`, paddingTop: '35px' }}>
-                  <LinkIcon size={22} color={colors.primary} /> Redes Sociais
-                </h3>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={labelStyle}>LinkedIn</label>
-                  <div style={{ display: 'flex', alignItems: 'center', background: pageBgColor, border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden' }}>
-                    <span style={prefixStyle}><Linkedin size={16} color="#0a66c2"/> https://linkedin.com/in/</span>
-                    <input type="text" value={personalForm.linkedin} onChange={handleLinkedinChange} style={{ flex: 1, padding: '14px', border: 'none', background: 'transparent', color: colors.text, fontSize: '14px', outline: 'none' }} placeholder="seu-usuario" />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '35px' }}>
-                  <label style={labelStyle}>GitHub</label>
-                  <div style={{ display: 'flex', alignItems: 'center', background: pageBgColor, border: `1px solid ${colors.border}`, borderRadius: '12px', overflow: 'hidden' }}>
-                    <span style={prefixStyle}><Github size={16}/> https://github.com/</span>
-                    <input type="text" value={personalForm.github} onChange={handleGithubChange} style={{ flex: 1, padding: '14px', border: 'none', background: 'transparent', color: colors.text, fontSize: '14px', outline: 'none' }} placeholder="seu-usuario" />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: `1px solid ${colors.border}`, paddingTop: '25px' }}>
-                  <button onClick={handleSavePersonalData} style={{ background: colors.primary, color: '#fff', border: 'none', padding: '12px 28px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: `0 4px 15px ${colors.primary}40`, transition: 'transform 0.2s' }} onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                    <Save size={18} /> Guardar Alterações
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ABA 2: PRIVACIDADE */}
-            {activeTab === 'privacy' && (
-              <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}><Shield size={22} color={colors.primary} /> Privacidade do Perfil</h3>
-                <p style={{ color: colors.textMuted, fontSize: '14px', marginBottom: '30px' }}>Controle quais as informações que ficam públicas para recrutadores e outros desenvolvedores.</p>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', background: pageBgColor, borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ background: colors.card, padding: '10px', borderRadius: '12px', border: `1px solid ${colors.border}` }}><Mail size={20} color={colors.textMuted} /></div>
-                      <div>
-                        <h4 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: '800' }}>Email Público</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: colors.textMuted }}>Mostrar o botão de contacto por email na sua página de perfil.</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch isOn={toggles.publicEmail} onClick={() => handleToggle('publicEmail')} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', background: pageBgColor, borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ background: colors.card, padding: '10px', borderRadius: '12px', border: `1px solid ${colors.border}` }}><Phone size={20} color={colors.textMuted} /></div>
-                      <div>
-                        <h4 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: '800' }}>Telefone Público</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: colors.textMuted }}>Exibir o seu número de telefone no seu perfil.</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch isOn={toggles.publicPhone} onClick={() => handleToggle('publicPhone')} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', background: pageBgColor, borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ background: colors.card, padding: '10px', borderRadius: '12px', border: `1px solid ${colors.border}` }}><Eye size={20} color={colors.textMuted} /></div>
-                      <div>
-                        <h4 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: '800' }}>Visibilidade do Perfil</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: colors.textMuted }}>Permitir que o seu perfil apareça na barra de pesquisa da plataforma.</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch isOn={toggles.profileVisibility} onClick={() => handleToggle('profileVisibility')} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ABA 3: NOTIFICAÇÕES */}
-            {activeTab === 'notifications' && (
-              <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}><Bell size={22} color={colors.primary} /> Alertas e E-mails</h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', background: pageBgColor, borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ background: colors.card, padding: '10px', borderRadius: '12px', border: `1px solid ${colors.border}` }}><MessageCircle size={20} color={colors.textMuted} /></div>
-                      <div>
-                        <h4 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: '800' }}>Novos Comentários</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: colors.textMuted }}>Receber um e-mail quando alguém comentar nos seus projetos.</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch isOn={toggles.emailComments} onClick={() => handleToggle('emailComments')} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px', background: pageBgColor, borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ background: colors.card, padding: '10px', borderRadius: '12px', border: `1px solid ${colors.border}` }}><Briefcase size={20} color={colors.textMuted} /></div>
-                      <div>
-                        <h4 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: '800' }}>Oportunidades e Vagas</h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: colors.textMuted }}>Receber alertas de recrutadores ou vagas recomendadas.</p>
-                      </div>
-                    </div>
-                    <ToggleSwitch isOn={toggles.emailJobs} onClick={() => handleToggle('emailJobs')} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ABA 4: SEGURANÇA E CONTA */}
-            {activeTab === 'account' && (
-              <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}><Lock size={22} color={colors.primary} /> Segurança e Dados</h3>
-                
-                <div style={{ marginBottom: '40px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '900', marginBottom: '10px', color: colors.text }}>Os Seus Dados (LGPD)</h4>
-                  <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px', lineHeight: '1.6' }}>Você tem o direito de solicitar uma cópia de todos os projetos, publicações e dados pessoais armazenados na nossa plataforma.</p>
-                  <button onClick={() => alert('Em breve: Os seus dados serão enviados para o seu e-mail em formato JSON.')} style={{ background: 'transparent', border: `1px solid ${colors.border}`, color: colors.text, padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                    <Download size={16} /> Solicitar Cópia dos Dados
-                  </button>
-                </div>
-                
-                <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '30px' }}>
-                  <h4 style={{ color: '#f59e0b', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><UserMinus size={18} /> Desativar Conta</h4>
-                  <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>O seu perfil e projetos ficarão ocultos, mas não serão apagados. Pode voltar quando quiser e reativar com o seu Login Google.</p>
-                  <button onClick={() => { if(window.confirm('Deseja desativar temporariamente o seu perfil?')) alert('Conta desativada. Para reativar, basta fazer login novamente.'); }} style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s', marginBottom: '30px' }} onMouseOver={(e) => e.currentTarget.style.background = '#f59e0b'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)'}>
-                    Desativar temporariamente
-                  </button>
-
-                  <h4 style={{ color: '#ef4444', fontSize: '16px', fontWeight: '900', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Trash2 size={18} /> Apagar Definitivamente</h4>
-                  <p style={{ color: colors.textMuted, fontSize: '13px', marginBottom: '15px' }}>Ao apagar a conta, todos os seus projetos e informações serão perdidos. Esta ação é irreversível.</p>
-                  <button onClick={() => { if(window.confirm('Tem a certeza absoluta? Esta ação não pode ser desfeita.')) alert('Conta em processo de exclusão...'); }} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px 20px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#ef4444'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
-                    Apagar a minha conta
-                  </button>
-                </div>
-              </div>
-            )}
-            
-          </div>
+        <div style={{ flex: 1, backgroundColor: colors.surface, padding: '40px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: `1px solid ${colors.border}` }}>
+          {renderTabContent()}
         </div>
+
       </main>
 
+      {/* NOTIFICAÇÃO TOAST FLUTUANTE */}
+      {showToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          right: '40px',
+          backgroundColor: '#10b981',
+          color: '#ffffff',
+          padding: '16px 24px',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 9999,
+          animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <CheckCircle size={24} />
+          <div>
+            <h4 style={{ margin: 0, fontWeight: '800', fontSize: '15px' }}>Sucesso!</h4>
+            <p style={{ margin: 0, fontSize: '13px', opacity: 0.9 }}>As suas alterações foram guardadas.</p>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp {
+          from { transform: translateY(100px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
       `}</style>
     </div>
   );

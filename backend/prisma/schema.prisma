@@ -20,11 +20,26 @@ model User {
   bio       String?
   tools     String[]  // Requer PostgreSQL (Array de strings)
 
+  // === NOVOS CAMPOS DE CONFIGURAÇÕES (SETTINGS) ===
+  customLink          String?  @unique
+  altEmail            String?
+  primaryEmailChoice  String?  @default("google") // "google" ou "alternative"
+  phone               String?
+  isWhatsApp          Boolean  @default(false)
+  github              String?
+  linkedin            String?
+
+  // === CAMPOS DE PRIVACIDADE ===
+  profileVisibility   Boolean  @default(true)
+  publicEmail         Boolean  @default(true)
+  showLocation        Boolean  @default(true)
+  showSocial          Boolean  @default(true)
+
   // Relacionamentos
   projects  Project[]
   
   createdAt DateTime  @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt DateTime  @default(now()) @updatedAt
 }
 
 model Project {
