@@ -432,7 +432,7 @@ export function RegisterPage() {
           {step === 1 && (
             <div className="animate-in">
               <h2 style={{ fontSize: '30px', fontWeight: '900', marginBottom: '30px' }}>Criar Conta</h2>
-              <span style={inputLabelStyle}>E-MAIL OBRIGATÓRIO</span>
+              <span style={inputLabelStyle}>E-MAIL</span>
               <div style={inputContainerStyle(formData.email.length > 0 && !isEmailValid, isEmailAvailable === false)}>
                 <Mail size={18} style={{ position: 'absolute', left: '15px', color: colors.textMuted, zIndex: 1 }} />
                 <input name={emailFieldName} type="text" autoComplete="new-password" maxLength={40} placeholder="exemplo@gmail.com" style={{ ...inputRawStyle, paddingRight: (isEmailAvailable === true && !isEmailVerified) ? '140px' : '45px' }} disabled={isEmailVerified} onPaste={(e) => { e.preventDefault(); toast.error("Digite manualmente."); }} value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value.toLowerCase().replace(/[^a-z0-9@._-]/gi, '')}); setEmailSent(false); setIsEmailVerified(false); setEmailCode(''); setEmailCooldown(0); }} />
@@ -469,7 +469,7 @@ export function RegisterPage() {
                     <Lock size={18} style={{ position: 'absolute', left: '15px', color: colors.textMuted, zIndex: 1 }} />
                     <input type={showPass ? "text" : "password"} maxLength={20} autoComplete="new-password" placeholder="" style={{ ...inputRawStyle, color: theme === 'light' ? '#64748b' : '#94a3b8' }} onPaste={(e) => { e.preventDefault(); toast.error("Digite manualmente."); }} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value.replace(/\s/g, '')})} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '12px' }}>
-                      {!isPasswordStrong && formData.password.length > 0 && <div className="tooltip-container" style={{ color: '#f59e0b', display: 'flex' }}><AlertTriangle size={18} /><div className="tooltip-box">Requer: 8+ chars, maiúscula, nº e símbolo</div></div>}
+                      {!isPasswordStrong && formData.password.length > 0 && <div className="tooltip-container" style={{ color: '#f59e0b', display: 'flex' }}><AlertTriangle size={18} /><div className="tooltip-box">mínimo de 8 caracteres, uma letra maiúscula, um número e um símbolo.</div></div>}
                       <button onClick={() => setShowPass(!showPass)} type="button" style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}>{showPass ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                     </div>
                   </div>
@@ -745,7 +745,7 @@ export function RegisterPage() {
                   disabled={isRegistering || !isStep3Valid} 
                   style={{ flex: 1, padding: '18px', background: isStep3Valid ? colors.primary : colors.border, color: '#fff', border: 'none', borderRadius: '14px', fontWeight: '900', cursor: isRegistering || !isStep3Valid ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}
                 >
-                  {isRegistering ? <Loader2 size={18} className="animate-spin" /> : <>Criar Conta e Perfil <ArrowRight size={18} /></>}
+                  {isRegistering ? <Loader2 size={18} className="animate-spin" /> : <>Criar Conta <ArrowRight size={18} /></>}
                 </button>
               </div>
             </div>
