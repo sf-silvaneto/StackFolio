@@ -1,30 +1,48 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import { PrismaService } from '../prisma.service'; // Confirme se o caminho para o prisma.service está correto
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
     
-    if (!token) throw new UnauthorizedException();
+    // 1. Ler o cookie diretamente do cabeçalho da requisição
+    const cookieHeader = request.headers.cookie;
+    let token = null;
 
-    try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: 'SEGREDO_SUPER_SEGURO_DO_SILVESTRE',
-      });
-      request['user'] = payload;
-    } catch {
-      throw new UnauthorizedException();
+    if (cookieHeader) {
+      const cookies = cookieHeader.split(';').map(c => c.trim());
+      const sessionCookie = cookies.find(c => c.startsWith('session_token='));
+      if (sessionCookie) {
+        token = sessionCookie.split('=')[1];
+      }
     }
-    return true;
-  }
+    
+    if (!token) {
+      throw new UnauthorizedException('Não autenticado. Por favor, faça login.');
+    }
 
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    // 2. Procurar a sessão na base de dados
+    const session = await this.prisma.session.findUnique({
+      where: { sessionToken: token },
+      include: { user: true } // Traz os dados do utilizador junto com a sessão
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Sessão inválida ou não encontrada.');
+    }
+
+    // 3. Verificar se a sessão já expirou
+    if (session.expiresAt < new Date()) {
+      await this.prisma.session.delete({ where: { id: session.id } }); // Limpa do banco
+      throw new UnauthorizedException('A sua sessão expirou. Faça login novamente.');
+    }
+
+    // 4. Anexar o utilizador à requisição (para os controllers poderem aceder)
+    request['user'] = session.user;
+
+    return true;
   }
 }

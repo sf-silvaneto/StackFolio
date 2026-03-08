@@ -97,7 +97,8 @@ const CustomAutocomplete = ({ value, onChange, options, placeholder, icon: Icon,
 };
 
 export function CompleteProfilePage() {
-  const { tempGoogleData, completeRegistration } = useAuth() as any;
+  // 1. Mudança aqui: Trocado 'tempGoogleData' por 'user'
+  const { user, completeRegistration } = useAuth() as any;
   const { theme, toggleTheme, colors } = useTheme() as any;
   const navigate = useNavigate();
 
@@ -136,15 +137,13 @@ export function CompleteProfilePage() {
   const [linkedin, setLinkedin] = useState('');
   const [errors, setErrors] = useState({ github: '', linkedin: '', username: '' });
 
+  // 2. Mudança no useEffect: Sem redirecionamentos manuais, apenas inicialização de dados
   useEffect(() => {
-    if (!tempGoogleData) {
-      navigate('/');
-    } else {
-      setFullName(tempGoogleData.name);
-      setProfileImg(tempGoogleData.picture);
-      setPublicEmail(tempGoogleData.email);
+    if (user) {
+      if (!fullName) setFullName(user.name || user.username || '');
+      if (!publicEmail) setPublicEmail(user.email || '');
     }
-  }, [tempGoogleData, navigate]);
+  }, [user]);
 
   const triggerToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({msg, type});
@@ -318,7 +317,8 @@ export function CompleteProfilePage() {
     }
   };
 
-  if (!tempGoogleData) return null;
+  // 3. Substituir tempGoogleData por user
+  if (!user) return null;
 
   const pageBgColor = theme === 'light' ? '#f8fafc' : '#0f172a';
   const inputBgColor = theme === 'light' ? '#f1f5f9' : '#1e293b';
@@ -374,7 +374,8 @@ export function CompleteProfilePage() {
 
               <div style={{ padding: '0 30px 30px 30px', position: 'relative', marginTop: '-55px', display: 'flex', alignItems: 'flex-end', gap: '20px' }}>
                 <label style={{ position: 'relative', cursor: 'pointer', borderRadius: '50%', border: `6px solid ${colors.card}` }}>
-                  <img src={profileImg || tempGoogleData.picture} alt="Perfil" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', background: colors.card }} />
+                  {/* 4. Usar avatar automático do ui-avatars.com caso não exista profileImg nem GoogleData */}
+                  <img src={profileImg || `https://ui-avatars.com/api/?name=${fullName || 'User'}&background=random&color=fff&size=128`} alt="Perfil" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', background: colors.card }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }} onMouseOver={e => e.currentTarget.style.opacity = '1'} onMouseOut={e => e.currentTarget.style.opacity = '0'}>
                     <Camera size={24} color="#fff" />
                   </div>

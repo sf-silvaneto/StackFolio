@@ -1,53 +1,56 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql" // Se estiver usando SQLite, tools String[] vai dar erro, me avise se for o caso.
-  url      = env("DATABASE_URL")
+model User {
+  id             String   @id @default(uuid())
+  username       String?  @unique
+  email          String   @unique
+  password_hash  String?
+  email_verified Boolean  @default(false)
+  
+  // Dados do Perfil
+  fullName       String?
+  displayName    String?
+  role           String?
+  seniority      String?
+  englishLevel   String?
+  location       String?
+  availability   String?
+  bio            String?
+  profileImg     String?
+  coverImg       String?
+  tools          String?  // String JSON
+  education      String?  // String JSON
+  contacts       String?  // String JSON
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  projects       Project[]
+  sessions       Session[]
 }
 
-model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String
-  password  String?   // Opcional para quem loga com Google
-  googleId  String?   @unique
-  picture   String?
-  
-  // Informações do perfil
-  nickname  String?   @unique
-  bio       String?
-  tools     String[]  // Requer PostgreSQL (Array de strings)
-
-  // === NOVOS CAMPOS DE CONFIGURAÇÕES (SETTINGS) ===
-  customLink          String?  @unique
-  altEmail            String?
-  primaryEmailChoice  String?  @default("google") // "google" ou "alternative"
-  phone               String?
-  isWhatsApp          Boolean  @default(false)
-  github              String?
-  linkedin            String?
-
-  // === CAMPOS DE PRIVACIDADE ===
-  profileVisibility   Boolean  @default(true)
-  publicEmail         Boolean  @default(true)
-  showLocation        Boolean  @default(true)
-  showSocial          Boolean  @default(true)
-
-  // Relacionamentos
-  projects  Project[]
-  
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now()) @updatedAt
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expiresAt    DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
 }
 
 model Project {
   id          String   @id @default(uuid())
   title       String
-  description String
+  description String?
+  tools       String?
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }

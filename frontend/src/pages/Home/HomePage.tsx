@@ -1,11 +1,16 @@
 import logoImg from '../../assets/logo.png';
 import React, { useState, useEffect } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 
-import { Github, Linkedin, ExternalLink, X, TrendingUp, Clock, Eye, ThumbsUp, User, Sun, Moon, LogOut, LayoutDashboard, Briefcase, GraduationCap, Play, Filter, ChevronDown, Search, Bookmark, BadgeCheck, Layers, XCircle, MessageCircle, Send, Grid3x3, LayoutList, Terminal, Cpu, Globe, CheckCircle, Wrench, Lightbulb, Share2, Link as LinkIcon, Twitter, Settings, Coffee, Heart } from 'lucide-react';
+import { 
+  Github, Linkedin, ExternalLink, X, TrendingUp, Clock, Eye, ThumbsUp, User, 
+  Sun, Moon, LogOut, LayoutDashboard, Briefcase, GraduationCap, Play, Filter, 
+  ChevronDown, Search, Bookmark, BadgeCheck, Layers, XCircle, MessageCircle, 
+  Send, Grid3x3, LayoutList, Terminal, Cpu, Globe, CheckCircle, Wrench, 
+  Lightbulb, Share2, Link as LinkIcon, Twitter, Settings, Coffee, Heart, LogIn // <--- Adiciona este!
+} from 'lucide-react';
 
 const SkillIcon = ({ slug, size, isActive, fallbackColor }: { slug: string, size: number, isActive?: boolean, fallbackColor?: string }) => {
   const [error, setError] = useState(false);
@@ -38,8 +43,8 @@ const SkillIcon = ({ slug, size, isActive, fallbackColor }: { slug: string, size
 
 export function HomePage() {
   const { theme, toggleTheme, colors } = useTheme() as any;
-  const { user, token, loginWithGoogle, logout } = useAuth() as any;
-  const signed = !!token; 
+  const { user, logout } = useAuth() as any; 
+  const signed = !!user; 
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('trending');
@@ -192,21 +197,6 @@ export function HomePage() {
   useEffect(() => {
     document.body.className = theme === 'light' ? 'light-mode' : '';
   }, [theme]);
-
-  const handleSuccess = async (credentialResponse: any) => {
-    if (credentialResponse.credential) {
-      try {
-        const isComplete = await loginWithGoogle(credentialResponse.credential);
-        if (isComplete) {
-          navigate('/profile'); 
-        } else {
-          navigate('/complete-profile'); 
-        }
-      } catch (error) {
-        console.error("Falha ao processar login do Google", error);
-      }
-    }
-  };
 
   const handleLogout = () => { if (logout) logout(); };
 
@@ -412,8 +402,7 @@ export function HomePage() {
       )}
 
       {/* NAVBAR UNIFICADA (DE PONTA A PONTA) */}
-      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '10px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 80, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-        {/* AQUI ESTÁ A MUDANÇA: Removido o maxWidth e margin, deixando ocupar 100% da tela */}
+      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '10px 0', background: colors.card, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px', boxSizing: 'border-box' }}>
           
           {/* ESQUERDA: Logo no extremo */}
@@ -434,38 +423,44 @@ export function HomePage() {
             />
           </div>
 
-          {/* DIREITA: Perfil e Opções no extremo */}
+{/* DIREITA: Perfil e Opções no extremo */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
+            {/* Se NÃO estiver logado, mostra o botão Logar */}
             {!signed ? (
-              <GoogleLogin onSuccess={handleSuccess} theme={theme === 'dark' ? 'filled_black' : 'filled_blue'} shape="pill" />
+              <button 
+                onClick={() => navigate('/login')} 
+                style={{ background: colors.primary, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: `0 4px 14px ${colors.primary}40` }}
+              >
+                <LogIn size={18} /> Logar
+              </button>
             ) : (
+              /* Se ESTIVER logado, mostra o bonequinho do perfil */
               <div 
                 style={{ position: 'relative' }} 
                 onMouseEnter={() => setShowUserMenu(true)} 
                 onMouseLeave={() => setShowUserMenu(false)}
               >
-                {/* Botão Principal do Perfil */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '6px 12px', borderRadius: '12px', background: showUserMenu ? (theme === 'light' ? '#f1f5f9' : '#1e293b') : 'transparent', transition: 'background 0.2s' }}>
-                  <img src={user?.picture || defaultGoogleAvatar} alt="Perfil" style={{ width: '35px', height: '35px', borderRadius: '50%', border: `2px solid ${colors.primary}`, objectFit: 'cover' }} />
-                  <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user?.name || 'Silva Neto'}</span>
+                  <img 
+                    src={user.profileImg || `https://ui-avatars.com/api/?name=${user.fullName || user.username}&background=random&color=fff`} 
+                    alt="Perfil" 
+                    style={{ width: '35px', height: '35px', borderRadius: '50%', border: `2px solid ${colors.primary}`, objectFit: 'cover' }} 
+                  />
+                  <span style={{fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap'}}>{user.displayName || user.username}</span>
                   <ChevronDown size={14} style={{ color: colors.textMuted, transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                 </div>
 
-                {/* Dropdown do Perfil */}
+                {/* Menu suspenso traduzido */}
                 {showUserMenu && (
-                  <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '8px', zIndex: 100, width: '180px' }}>
+                  <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '8px', zIndex: 100, width: '200px' }}>
                     <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '14px', padding: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-                      <button onClick={() => navigate(`/${user?.name?.toLowerCase().replace(/\s+/g, '') || 'perfil'}`)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = galleryBgColor} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                      <button onClick={() => navigate(`/${user.username}`)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = (theme === 'light' ? '#f1f5f9' : '#1e293b')} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                         <User size={16} /> Meu Perfil
                       </button>
-                      <button onClick={() => navigate('/configuracoes')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: colors.text, fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = galleryBgColor} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                        <Settings size={16} /> Configurações
-                      </button>
-                      <div style={{ height: '1px', background: colors.border, margin: '4px 0' }}></div>
                       <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', padding: '10px', color: '#ef4444', fontSize: '13px', fontWeight: '700', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                         <LogOut size={16} /> Sair da conta
                       </button>

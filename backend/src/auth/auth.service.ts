@@ -1,73 +1,113 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import { OAuth2Client } from 'google-auth-library';
+import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from '../prisma.service'; 
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-  private googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  constructor(private prisma: PrismaService) {}
 
-  constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) {}
+  async register(data: RegisterDto) {
+    const email = String(data.email).trim();
+    const username = String(data.username).trim();
+    const password = String(data.password);
 
-  async googleLogin(token: string) {
-    try {
-      // 1. Descriptografa e valida o token direto com o Google
-      const ticket = await this.googleClient.verifyIdToken({
-        idToken: token,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-
-      const payload = ticket.getPayload();
-      if (!payload) throw new UnauthorizedException('Token Google inválido');
-
-      const { email, name, picture, sub: googleId } = payload;
-
-      // 2. Busca o usuário no banco pelo email
-      const user = await this.prisma.user.findUnique({
-        where: { email },
-      });
-
-      // 3. Se usuário existe e tem cadastro, realiza login completo
-      if (user) {
-        return {
-          complete: true,
-          access_token: this.jwtService.sign({ id: user.id, email: user.email }),
-          user,
-        };
-      }
-
-      // 4. Se não existe, envia os dados base para a tela de "Completar Cadastro" do Frontend
-      return {
-        complete: false,
-        message: 'incomplete_registration',
-        tempData: { email, name, picture, googleId },
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Falha na autenticação do Google');
+    // 1. Verificação de duplicidade de Email
+    const existingEmail = await this.prisma.user.findUnique({ 
+      where: { email } 
+    });
+    if (existingEmail) {
+      throw new ConflictException('Este e-mail já está em uso.');
     }
-  }
 
-  async completeRegistration(data: any) {
-    // Criação final do usuário combinando os dados do Google + Formulário do Frontend
-    const newUser = await this.prisma.user.create({
+    // 2. Verificação de duplicidade de Username (Evita o erro P2002)
+    const existingUsername = await this.prisma.user.findUnique({ 
+      where: { username } 
+    });
+    if (existingUsername) {
+      throw new ConflictException('Este nome de utilizador já está em uso.');
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // 3. Criar o utilizador
+    const user = await this.prisma.user.create({
       data: {
-        email: data.email,
-        name: data.name,
-        googleId: data.googleId,
-        picture: data.picture,
-        nickname: data.nickname,
-        bio: data.bio,
-        tools: data.tools || [],
+        email: email,
+        username: username,
+        password_hash: hashedPassword,
+        displayName: username,
       },
     });
 
-    // Retorna o JWT para fazer o login automático
+    // 4. MÁGICA: Gera sessão imediata após registro para evitar erro 401 no frontend
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); 
+
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        sessionToken: sessionToken,
+        expiresAt: expiresAt,
+      },
+    });
+
+    return { 
+      message: 'Utilizador criado com sucesso!', 
+      sessionToken, // Enviamos o token já no registro
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+      }
+    };
+  }
+
+  async login(data: LoginDto) {
+    const email = String(data.email).trim();
+    const password = String(data.password);
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: email },
+    });
+
+    if (!user || !user.password_hash) {
+      throw new UnauthorizedException('E-mail ou senha inválidos.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('E-mail ou senha inválidos.');
+    }
+
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); 
+
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        sessionToken: sessionToken,
+        expiresAt: expiresAt,
+      },
+    });
+
     return {
-      access_token: this.jwtService.sign({ id: newUser.id, email: newUser.email }),
-      user: newUser,
+      message: 'Login efetuado com sucesso.',
+      sessionToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        displayName: user.displayName || user.username,
+        profileImg: user.profileImg
+      }
     };
   }
 }

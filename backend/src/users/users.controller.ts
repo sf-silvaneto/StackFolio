@@ -1,25 +1,25 @@
-import { Controller, Get, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Patch, Body, Req, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from '../prisma.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private usersService: UsersService, private prisma: PrismaService) {}
 
-  @Get()
-  findAll() {
-    return this.usersService.findAll();
-  }
+  @Patch('profile')
+  async updateProfile(@Req() req: any, @Body() data: any) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) throw new UnauthorizedException('Não autorizado');
 
-  // Rota para o frontend pegar os dados atuais (Settings)
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
-  }
+    const token = authHeader.split(' ')[1];
+    const session = await this.prisma.session.findUnique({
+      where: { sessionToken: token },
+    });
 
-  // Rota para o frontend salvar as alterações
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+    if (!session || session.expiresAt < new Date()) {
+      throw new UnauthorizedException('Sessão expirada');
+    }
+
+    return this.usersService.updateProfile(session.userId, data);
   }
 }
