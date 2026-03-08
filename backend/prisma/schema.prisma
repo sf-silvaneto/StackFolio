@@ -8,32 +8,34 @@ generator client {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  username       String?  @unique
-  email          String   @unique
+  id             String    @id @default(uuid())
+  username       String?   @unique
+  email          String    @unique
   password_hash  String?
-  email_verified Boolean  @default(false)
-  
-  // Dados do Perfil
-  fullName       String?
-  displayName    String?
-  role           String?
-  seniority      String?
-  englishLevel   String?
-  location       String?
-  availability   String?
-  bio            String?
-  profileImg     String?
-  coverImg       String?
-  tools          String?  // String JSON
-  education      String?  // String JSON
-  contacts       String?  // String JSON
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  email_verified Boolean   @default(false)
+  phone          String?   @unique // Adicionado para SMS funcional
+  birthDate      DateTime?          // Adicionado para validação +18
 
-  projects       Project[]
-  sessions       Session[]
+  // Dados do Perfil
+  fullName     String?
+  displayName  String?
+  role         String?
+  seniority    String?
+  englishLevel String?
+  location     String?
+  availability String?
+  bio          String?
+  profileImg   String?
+  coverImg     String?
+  tools        String? // String JSON
+  education    String? // String JSON
+  contacts     String? // String JSON
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+  sessions Session[]
 }
 
 model Session {
@@ -53,4 +55,13 @@ model Project {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+}
+
+// Nova tabela para o sistema de verificação real
+model SmsVerification {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
