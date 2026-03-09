@@ -1,10 +1,16 @@
-import { Controller, Patch, Body, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Patch, Body, Req, UnauthorizedException, Get, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma.service';
 
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService, private prisma: PrismaService) {}
+
+  // ROTA ADICIONADA: Busca o perfil público pelo username
+  @Get('profile/:username')
+  async getProfile(@Param('username') username: string) {
+    return this.usersService.findByUsername(username);
+  }
 
   @Patch('profile')
   async updateProfile(@Req() req: any, @Body() data: any) {

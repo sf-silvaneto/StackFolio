@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Res, Req, UseGuards, Query } from '@nestjs
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { AuthGuard } from './auth.guard'; // Caso você esteja usando o Guard para a rota /me
+import { AuthGuard } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -27,7 +27,7 @@ export class AuthController {
     return { message: result.message, user: result.user };
   }
 
-  // --- E-MAIL VERIFICATION ---
+  // --- E-MAIL VERIFICATION (REGISTRO) ---
   @Post('send-email-code')
   async sendEmailCode(@Body('email') email: string) {
     return this.authService.sendEmailCode(email);
@@ -36,6 +36,17 @@ export class AuthController {
   @Post('verify-email-code')
   async verifyEmailCode(@Body('email') email: string, @Body('code') code: string) {
     return this.authService.verifyEmailCode(email, code);
+  }
+
+  // --- PASSWORD RECOVERY (ESQUECI A SENHA) ---
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: any) {
+    return this.authService.resetPassword(body);
   }
 
   // --- AVAILABILITY CHECKS ---

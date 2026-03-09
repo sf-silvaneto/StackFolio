@@ -5,15 +5,15 @@ import { useTheme } from '../../context/ThemeContext';
 import { 
   Mail, 
   Lock, 
-  ArrowRight, 
   LogIn, 
-  AlertCircle, 
   Eye, 
   EyeOff,
   Sun,
-  Moon
+  Moon,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import logoImg from '../../assets/logo.png';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,6 +21,10 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Hack Anti-Autofill para evitar o fundo branco do navegador
+  const [emailFieldName] = useState(`field_${Math.random().toString(36).substring(7)}`);
+  const [passFieldName] = useState(`pass_${Math.random().toString(36).substring(7)}`);
+
   const { login } = useAuth() as any;
   const { theme, toggleTheme, colors } = useTheme() as any;
   const navigate = useNavigate();
@@ -44,128 +48,110 @@ export function LoginPage() {
     }
   };
 
-  const pageBgColor = theme === 'light' ? '#f8fafc' : '#0f172a';
-  const inputBgColor = theme === 'light' ? '#f1f5f9' : '#1e293b';
-  const cardStyle = { 
-    background: colors.card, 
-    border: `1px solid ${colors.border}`, 
-    borderRadius: '24px', 
-    padding: '40px', 
-    boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
-    width: '100%',
-    maxWidth: '450px',
-    animation: 'slideUp 0.5s ease-out'
-  };
+  // ESTILOS IDÊNTICOS AOS DA PÁGINA DE REGISTRO
+  const inputLabelStyle = { display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '900', marginBottom: '6px', color: colors.textMuted, paddingLeft: '4px', textTransform: 'uppercase' as 'uppercase' };
 
-  const inputStyle = { 
-    width: '100%', 
-    padding: '14px 14px 14px 45px', 
-    borderRadius: '12px', 
-    border: `1px solid ${colors.border}`, 
-    background: inputBgColor, 
-    color: colors.text, 
-    outline: 'none', 
-    boxSizing: 'border-box' as 'border-box',
-    transition: 'all 0.2s'
+  const inputContainerStyle = (errorCondition: boolean = false) => ({
+    position: 'relative' as 'relative', width: '100%', height: '52px', marginBottom: '20px',
+    border: `1px solid ${errorCondition ? '#ef4444' : colors.border}`,
+    borderRadius: '12px', background: theme === 'light' ? '#f1f5f9' : '#1e293b',
+    display: 'flex', alignItems: 'center', boxSizing: 'border-box' as 'border-box', overflow: 'visible',
+    transition: 'border-color 0.2s'
+  });
+
+  const inputRawStyle = {
+    flex: 1, height: '100%', padding: '0 14px 0 45px', background: 'transparent',
+    border: 'none', color: colors.text, outline: 'none', fontSize: '14px', width: '100%',
   };
 
   return (
-    <div style={{ background: pageBgColor, minHeight: '100vh', display: 'flex', flexDirection: 'column', color: colors.text }}>
+    <div style={{ background: theme === 'light' ? '#f8fafc' : '#0f172a', minHeight: '100vh', display: 'flex', flexDirection: 'column', color: colors.text }}>
       
-      {/* HEADER / LOGO */}
-      <header style={{ padding: '30px 40px', position: 'absolute', top: 0, left: 0 }}>
-        <div 
-          onClick={() => navigate('/')} 
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
-        >
-          <div style={{ background: colors.primary, width: '35px', height: '35px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LogIn size={20} color="#fff" />
-          </div>
-          <span style={{ fontWeight: '900', fontSize: '22px', color: colors.primary, letterSpacing: '-1px' }}>
-            Stack Folio
-          </span>
+      {/* HEADER / LOGO (Idêntico ao Registo) */}
+      <header style={{ borderBottom: `1px solid ${colors.border}`, padding: '0 40px', background: colors.card, height: '70px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate('/')}>
+          <img src={logoImg} alt="Logo" style={{ height: '45px', mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.text, cursor: 'pointer', padding: '10px', borderRadius: '50%' }}>
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
         </div>
       </header>
 
-      {/* BOTÃO DE TEMA (CANTO SUPERIOR DIREITO) */}
-      <div style={{ position: 'absolute', top: '30px', right: '40px' }}>
-        <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: colors.textMuted, cursor: 'pointer', padding: '10px' }}>
-          {theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
-        </button>
-      </div>
-
       {/* FORMULÁRIO CENTRALIZADO */}
       <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div style={cardStyle}>
+        <div className="animate-in" style={{ 
+          background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '28px', 
+          padding: '50px', width: '100%', maxWidth: '450px', boxShadow: '0 15px 50px rgba(0,0,0,0.06)' 
+        }}>
           <div style={{ textAlign: 'center', marginBottom: '35px' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: '900', marginBottom: '10px', letterSpacing: '-0.5px' }}>Entrar</h1>
-            <p style={{ color: colors.textMuted, fontWeight: '600', fontSize: '15px' }}>
-              Aceda à sua conta para gerir o seu portfólio.
+            <h1 style={{ fontSize: '30px', fontWeight: '900', marginBottom: '10px', letterSpacing: '-0.5px' }}>Bem-vindo de volta</h1>
+            <p style={{ color: colors.textMuted, fontSize: '14px' }}>
+              Acesse a sua conta para gerenciar o seu portfólio.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '800', marginBottom: '8px' }}>E-mail</label>
-              <Mail size={18} color={colors.textMuted} style={{ position: 'absolute', left: '15px', top: '41px', zInitialize: 2 }} />
-              <input 
-                type="email" 
-                required 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemplo@email.com" 
-                style={inputStyle} 
-              />
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+            
+            <div>
+              <span style={inputLabelStyle}>E-MAIL CADASTRADO</span>
+              <div style={inputContainerStyle()}>
+                <Mail size={18} color={colors.textMuted} style={{ position: 'absolute', left: '15px', zIndex: 1 }} />
+                <input 
+                  name={emailFieldName}
+                  type="text" 
+                  autoComplete="new-password"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
+                  placeholder="exemplo@gmail.com" 
+                  style={inputRawStyle} 
+                  disabled={isLoading}
+                />
+              </div>
             </div>
 
-            <div style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontSize: '13px', fontWeight: '800' }}>Palavra-passe</label>
-                <Link to="/recuperar-senha" style={{ fontSize: '12px', color: colors.primary, textDecoration: 'none', fontWeight: '700' }}>Esqueceu-se?</Link>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '900', color: colors.textMuted, paddingLeft: '4px', textTransform: 'uppercase' }}>Senha</span>
+                <Link to="/recuperar-senha" style={{ fontSize: '12px', color: colors.primary, textDecoration: 'none', fontWeight: '800' }}>Esqueceu a senha?</Link>
               </div>
-              <Lock size={18} color={colors.textMuted} style={{ position: 'absolute', left: '15px', top: '41px', zInitialize: 2 }} />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                style={inputStyle} 
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '15px', top: '41px', background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted }}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <div style={inputContainerStyle()}>
+                <Lock size={18} color={colors.textMuted} style={{ position: 'absolute', left: '15px', zIndex: 1 }} />
+                <input 
+                  name={passFieldName}
+                  type={showPassword ? "text" : "password"} 
+                  autoComplete="new-password"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value.replace(/\s/g, ''))}
+                  placeholder="••••••••" 
+                  style={{ ...inputRawStyle, color: theme === 'light' ? '#64748b' : '#94a3b8' }} 
+                  disabled={isLoading}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '15px', background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isLoading || !email || !password}
               style={{ 
-                marginTop: '10px',
-                padding: '16px', 
-                background: colors.primary, 
-                color: '#fff', 
-                border: 'none', 
-                borderRadius: '14px', 
-                fontWeight: '900', 
-                fontSize: '16px',
-                cursor: isLoading ? 'not-allowed' : 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '10px',
-                boxShadow: `0 8px 25px ${colors.primary}40`,
-                transition: 'transform 0.2s',
-                opacity: isLoading ? 0.7 : 1
+                marginTop: '10px', padding: '18px', 
+                background: (!email || !password || isLoading) ? colors.border : colors.primary, 
+                color: '#fff', border: 'none', borderRadius: '14px', fontWeight: '900', fontSize: '16px',
+                cursor: (!email || !password || isLoading) ? 'not-allowed' : 'pointer', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                boxShadow: (!email || !password || isLoading) ? 'none' : `0 8px 25px ${colors.primary}40`,
+                transition: 'all 0.3s', opacity: isLoading ? 0.7 : 1
               }}
-              onMouseOver={(e) => !isLoading && (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseOut={(e) => !isLoading && (e.currentTarget.style.transform = 'translateY(0)')}
             >
-              {isLoading ? 'A autenticar...' : <><LogIn size={20} /> Entrar na Conta</>}
+              {isLoading ? <Loader2 size={20} className="animate-spin" /> : <><LogIn size={20} /> Entrar na Conta</>}
             </button>
           </form>
 
@@ -180,20 +166,8 @@ export function LoginPage() {
         </div>
       </main>
 
-      {/* FOOTER DIVISÃO LEGAL (IGUAL À HOME E PERFIL) */}
-      <footer style={{ background: theme === 'light' ? '#f8fafc' : '#1a1a1a', color: colors.textMuted, padding: '3rem 1rem', display: 'flex', justifyContent: 'center', marginTop: 'auto', borderTop: `1px solid ${colors.border}` }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ fontSize: '0.875rem', textAlign: 'center', fontWeight: '600' }}>
-            © {new Date().getFullYear()} Todos os direitos reservados.
-          </div>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.875rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: '600' }}>
-            <Link to="/termos" style={{ color: colors.textMuted, textDecoration: 'none' }}>Termos de Serviço</Link>
-            <Link to="/privacidade" style={{ color: colors.textMuted, textDecoration: 'none' }}>Política de Privacidade</Link>
-          </div>
-        </div>
-      </footer>
-
       <style>{`
+        .animate-in { animation: slideUp 0.4s ease-out; }
         @keyframes slideUp { 
           from { opacity: 0; transform: translateY(20px); } 
           to { opacity: 1; transform: translateY(0); } 

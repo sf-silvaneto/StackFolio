@@ -4,13 +4,14 @@ import { useAuth } from './context/AuthContext';
 import { HomePage } from './pages/Home/HomePage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage'; 
+import { ForgotPasswordPage } from './pages/Auth/ForgotPasswordPage'; // <-- Adicionado
 import { ProfilePage } from './pages/Profile/ProfilePage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { PrivacyPage } from './pages/Legal/PrivacyPage';
 import { TermsPage } from './pages/Legal/TermsPage';
 import { Toaster } from 'react-hot-toast';
 
-// Guardião para rotas que exigem login (Configurações, Editar Perfil)
+// Guardião para rotas que exigem login
 const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth() as any;
   const location = useLocation();
@@ -30,6 +31,15 @@ const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Se o utilizador já estiver logado e tentar aceder a rotas de Auth, manda para a Home
+const RequireGuest = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth() as any;
+  if (!isLoading && user) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
+
 export default function App() {
   return (
     <>
@@ -44,11 +54,14 @@ export default function App() {
 
       <Router>
         <Routes>
-          {/* --- ROTAS PÚBLICAS --- */}
+          {/* --- ROTAS PÚBLICAS (ESTÁTICAS) --- */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/registrar" element={<RegisterPage />} /> {/* Rota traduzida */}
-          <Route path="/:username" element={<ProfilePage />} />
+          
+          {/* Proteção para não deixar utilizadores logados acederem ao login/registo novamente */}
+          <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
+          <Route path="/registrar" element={<RequireGuest><RegisterPage /></RequireGuest>} /> 
+          <Route path="/recuperar-senha" element={<RequireGuest><ForgotPasswordPage /></RequireGuest>} /> {/* <-- Adicionado */}
+          
           <Route path="/privacidade" element={<PrivacyPage />} />
           <Route path="/termos" element={<TermsPage />} />
 
@@ -71,7 +84,10 @@ export default function App() {
             } 
           />
 
-          {/* --- FALLBACK --- */}
+          {/* --- ROTAS DINÂMICAS (CURINGA) --- */}
+          <Route path="/:username" element={<ProfilePage />} />
+
+          {/* --- FALLBACK (404) --- */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

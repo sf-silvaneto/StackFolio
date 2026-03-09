@@ -5,12 +5,23 @@ import { PrismaService } from '../prisma.service';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  // FUNÇÃO ADICIONADA: Encontra o usuário pelo link do perfil (username)
+  async findByUsername(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (!user) throw new NotFoundException('Utilizador não encontrado');
+
+    // Removemos a senha por segurança antes de enviar para o frontend
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
   async updateProfile(userId: string, data: any) {
-    // 1. Verificar se o utilizador existe
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilizador não encontrado');
 
-    // 2. Verificar se o username (Link) já existe para outro usuário
     if (data.username && data.username !== user.username) {
       const existing = await this.prisma.user.findFirst({
         where: { 
@@ -21,26 +32,27 @@ export class UsersService {
       if (existing) throw new ConflictException('Este Link/Username já está em uso.');
     }
 
-    // 3. Preparar os dados (Fidelidade total ao seu design de Perfil)
     const updateData = {
-      fullName: data.fullName,
-      displayName: data.fullName || data.displayName || user.username,
-      username: data.username,
-      role: data.role,
-      seniority: data.seniority,
-      englishLevel: data.englishLevel,
-      location: data.location,
-      availability: data.availability,
-      bio: data.bio,
-      profileImg: data.profileImg,
-      coverImg: data.coverImg,
-      // Prioridade 99% para a estrutura do CompleteProfile (JSON Strings)
-      tools: data.tools ? JSON.stringify(data.tools) : user.tools,
-      education: data.education ? JSON.stringify(data.education) : user.education,
-      contacts: data.contacts ? JSON.stringify(data.contacts) : user.contacts,
+      fullName: data.fullName !== undefined ? data.fullName : user.fullName,
+      displayName: data.displayName !== undefined ? data.displayName : user.displayName,
+      username: data.username !== undefined ? data.username : user.username,
+      role: data.role !== undefined ? data.role : user.role,
+      seniority: data.seniority !== undefined ? data.seniority : user.seniority,
+      englishLevel: data.englishLevel !== undefined ? data.englishLevel : user.englishLevel,
+      location: data.location !== undefined ? data.location : user.location,
+      availability: data.availability !== undefined ? data.availability : user.availability,
+      bio: data.bio !== undefined ? data.bio : user.bio,
+      profileImg: data.profileImg !== undefined ? data.profileImg : user.profileImg,
+      coverImg: data.coverImg !== undefined ? data.coverImg : user.coverImg,
+      phone: data.phone !== undefined ? data.phone : user.phone,
+      gender: data.gender !== undefined ? data.gender : user.gender,
+      github: data.github !== undefined ? data.github : user.github,
+      linkedin: data.linkedin !== undefined ? data.linkedin : user.linkedin,
+      birthDate: data.birthDate ? new Date(data.birthDate) : user.birthDate,
+      tools: data.tools ? (typeof data.tools === 'string' ? data.tools : JSON.stringify(data.tools)) : user.tools,
+      education: data.education ? (typeof data.education === 'string' ? data.education : JSON.stringify(data.education)) : user.education,
     };
 
-    // 4. Atualiza no banco de dados
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: updateData,

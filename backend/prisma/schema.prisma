@@ -13,8 +13,9 @@ model User {
   email          String    @unique
   password_hash  String?
   email_verified Boolean   @default(false)
-  phone          String?   @unique // Adicionado para SMS funcional
-  birthDate      DateTime?          // Adicionado para validação +18
+  phone          String?
+  gender         String?   // <-- ADICIONADO AQUI
+  birthDate      DateTime?
 
   // Dados do Perfil
   fullName     String?
@@ -27,9 +28,10 @@ model User {
   bio          String?
   profileImg   String?
   coverImg     String?
-  tools        String? // String JSON
-  education    String? // String JSON
-  contacts     String? // String JSON
+  tools        String?
+  education    String?
+  github       String?
+  linkedin     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -57,7 +59,6 @@ model Project {
   createdAt   DateTime @default(now())
 }
 
-// Nova tabela para o sistema de verificação real
 model SmsVerification {
   id        Int      @id @default(autoincrement())
   phone     String   @unique

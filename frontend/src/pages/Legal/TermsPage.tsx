@@ -1,77 +1,112 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { FileText, Scale, UserPlus, Code2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Scale } from 'lucide-react';
+import logoImg from '../../assets/logo.png';
 
 export function TermsPage() {
-  const { colors, theme } = useTheme() as any;
+  const { theme, colors } = useTheme() as any;
   const navigate = useNavigate();
 
-  const sectionStyle = { marginBottom: '40px' };
-  const titleStyle = { fontSize: '20px', fontWeight: '900', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', color: colors.primary };
-  const textStyle = { fontSize: '15px', lineHeight: '1.8', color: colors.textMuted };
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const pStyle = { color: theme === 'dark' ? '#cbd5e1' : '#334155', fontSize: '15px', marginBottom: '16px', lineHeight: '1.8' };
+  const h2Style = { fontSize: '20px', fontWeight: '800', marginBottom: '16px', borderBottom: `1px solid ${colors.border}`, paddingBottom: '10px', marginTop: '40px' };
+  const ulStyle = { color: theme === 'dark' ? '#cbd5e1' : '#334155', fontSize: '15px', paddingLeft: '20px', display: 'flex', flexDirection: 'column' as 'column', gap: '10px', marginBottom: '20px', lineHeight: '1.8' };
 
   return (
-    <div style={{ background: theme === 'light' ? '#f8fafc' : '#0f172a', minHeight: '100vh', padding: '60px 20px', color: colors.text }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', background: colors.card, padding: '50px', borderRadius: '32px', border: `1px solid ${colors.border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+    <div style={{ background: theme === 'light' ? '#f8fafc' : '#0f172a', minHeight: '100vh', color: colors.text, fontFamily: 'Inter, sans-serif' }}>
+      
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, padding: '0 40px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${colors.border}`, background: theme === 'light' ? 'rgba(248, 250, 252, 0.8)' : 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)' }}>
+        <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', color: colors.text, cursor: 'pointer', fontWeight: '700', fontSize: '14px', padding: '8px 12px', borderRadius: '8px', transition: 'background 0.2s' }} className="hover-bg">
+          <ArrowLeft size={18} /> Voltar
+        </button>
+        <img src={logoImg} alt="StackFolio Logo" style={{ height: '35px', mixBlendMode: theme === 'dark' ? 'screen' : 'multiply' }} />
+        <div style={{ width: '85px' }} />
+      </header>
+
+      <main style={{ maxWidth: '800px', margin: '0 auto', padding: '60px 20px' }}>
         
-        <header style={{ borderBottom: `1px solid ${colors.border}`, paddingBottom: '30px', marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px' }}>Termos de Serviço</h1>
-          <p style={{ color: colors.textMuted, fontSize: '14px' }}><strong>Última atualização:</strong> 01 de março de 2026</p>
-        </header>
-
-        <section style={sectionStyle}>
-          <p style={textStyle}>
-            Por favor, leia estes Termos cuidadosamente. Ao acessar ou usar o <strong>StackFolio</strong>, você concorda em ficar vinculado por estes Termos. Se você discordar de qualquer parte, não poderá utilizar o serviço.
-          </p>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}><UserPlus size={22} /> 1. Elegibilidade</h2>
-          <p style={textStyle}>
-            Para usar o StackFolio, você deve ser um entusiasta, estudante ou profissional da área de tecnologia. Ao se registrar via Google Auth, você garante que as informações fornecidas são verídicas.
-          </p>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}><Code2 size={22} /> 2. Propriedade Intelectual e Conteúdo</h2>
-          <p style={textStyle}>
-            O usuário mantém todos os direitos de propriedade sobre o código e projetos publicados. No entanto, ao publicar no StackFolio, você concede à plataforma uma licença mundial para exibir seu conteúdo publicamente para fins de portfólio.
-          </p>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}><AlertTriangle size={22} /> 3. Conduta Proibida</h2>
-          <ul style={textStyle}>
-            <li>Publicar projetos que não sejam de sua autoria sem os devidos créditos.</li>
-            <li>Introduzir malwares ou scripts maliciosos.</li>
-            <li>Utilizar a plataforma para assédio ou disseminação de discurso de ódio.</li>
-          </ul>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}><Scale size={22} /> 4. Isenção de Responsabilidade</h2>
-          <p style={textStyle}>
-            O StackFolio é fornecido "como está". Não garantimos que a plataforma estará livre de erros ou interrupções. Não nos responsabilizamos por contratações ou decisões de negócios tomadas com base nas informações dos perfis.
-          </p>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}><FileText size={22} /> 5. Foro</h2>
-          <p style={textStyle}>
-            Estes termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca para dirimir quaisquer controvérsias.
-          </p>
-        </section>
-
-        <div style={{ marginTop: '50px', paddingTop: '30px', borderTop: `1px solid ${colors.border}` }}>
-          <button 
-            onClick={() => navigate('/')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: colors.primary, color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-          >
-            <ArrowLeft size={18} /> Voltar
-          </button>
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '36px', fontWeight: '900', marginBottom: '10px', letterSpacing: '-0.5px' }}>Termos de Serviço</h1>
+          <p style={{ color: colors.textMuted, fontSize: '15px' }}>Última atualização: 8 de março de 2026</p>
         </div>
-      </div>
+
+        <div style={{ background: theme === 'dark' ? '#1e293b' : '#fef3c7', borderLeft: `4px solid #f59e0b`, padding: '24px', borderRadius: '0 12px 12px 0', marginBottom: '50px', display: 'flex', gap: '16px' }}>
+          <Scale size={28} color="#f59e0b" style={{ flexShrink: 0, marginTop: '4px' }} />
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '8px', color: theme === 'dark' ? '#fff' : '#b45309' }}>Resumo (TL;DR)</h3>
+            <p style={{ fontSize: '14px', color: theme === 'dark' ? '#cbd5e1' : '#78350f', margin: 0, lineHeight: '1.6' }}>
+              Seja respeitoso com a comunidade. Não faça spam, não tente derrubar nossos servidores nem se passe por membros da equipe do StackFolio. O conteúdo que você publica (textos, links e projetos) é de sua inteira responsabilidade. Nós nos reservamos o direito de suspender contas que violem estas regras, sem aviso prévio.
+            </p>
+          </div>
+        </div>
+
+        <section>
+          <p style={pStyle}>
+            Estes Termos de Serviço ("Termos") constituem um acordo legal entre você e o StackFolio. Ao acessar, se cadastrar ou utilizar nossos serviços, você declara ter lido, compreendido e concordado em ficar vinculado a estes Termos.
+          </p>
+
+          <h2 style={h2Style}>1. Requisitos de Conta e Elegibilidade</h2>
+          <ul style={ulStyle}>
+            <li>Para criar uma conta, você deve ter pelo menos 18 anos de idade.</li>
+            <li>Você é inteiramente responsável por manter a confidencialidade de suas credenciais de acesso (senha e acesso ao seu e-mail associado).</li>
+            <li>Você concorda em fornecer informações verdadeiras, precisas e atualizadas. A utilização de perfis fraudulentos (ou que personifiquem terceiros) é estritamente proibida.</li>
+          </ul>
+
+          <h2 style={h2Style}>2. Regras de Conduta e Uso Aceitável</h2>
+          <p style={pStyle}>Ao utilizar o StackFolio, o usuário concorda expressamente em <strong>NÃO</strong>:</p>
+          <ul style={ulStyle}>
+            <li>Utilizar nomes de usuário (*usernames*) reservados pelo sistema, termos que simulem administração oficial (ex: "suporte", "admin"), ou palavras obscenas e de baixo calão.</li>
+            <li>Realizar atividades de *scraping*, extração de dados automatizada, mineração ou utilizar bots para coletar informações de outros usuários.</li>
+            <li>Tentar explorar vulnerabilidades, realizar ataques de negação de serviço (DDoS) ou perturbar de qualquer forma a infraestrutura da plataforma.</li>
+            <li>Publicar conteúdo ilícito, pornográfico, discriminatório, que promova o ódio, ou que viole direitos de propriedade intelectual de terceiros.</li>
+          </ul>
+
+          <h2 style={h2Style}>3. Propriedade Intelectual do Usuário</h2>
+          <p style={pStyle}>
+            O StackFolio não reivindica a propriedade sobre o seu trabalho. Todo o código, descrições de projetos, imagens e links que você insere no seu portfólio permanecem como sua propriedade intelectual (ou de seus respectivos empregadores/clientes, conforme aplicável).
+          </p>
+          <p style={pStyle}>
+            Ao publicar o conteúdo no StackFolio, você assume total responsabilidade legal pelo mesmo e nos concede uma licença global, não exclusiva e isenta de *royalties* unicamente para hospedar, armazenar e exibir publicamente esse conteúdo na nossa plataforma.
+          </p>
+
+          <h2 style={h2Style}>4. Propriedade Intelectual do StackFolio</h2>
+          <p style={pStyle}>
+            Todo o código fonte subjacente, logotipos, design de interface (UI/UX), textos do sistema e arquitetura de dados do StackFolio são propriedade exclusiva de nossa equipe e encontram-se protegidos pelas leis de direitos autorais. É estritamente proibido copiar, clonar ou modificar a nossa plataforma para a criação de serviços concorrentes.
+          </p>
+
+          <h2 style={h2Style}>5. Links para Terceiros</h2>
+          <p style={pStyle}>
+            Os portfólios dos usuários podem conter links para sites externos (como repositórios no GitHub, redes sociais ou sites pessoais). O StackFolio não monitora e não assume qualquer responsabilidade pelo conteúdo, políticas de privacidade ou segurança desses sites de terceiros.
+          </p>
+
+          <h2 style={h2Style}>6. Suspensão e Rescisão de Conta</h2>
+          <p style={pStyle}>
+            O StackFolio reserva-se o direito de suspender, desativar ou apagar permanentemente, a qualquer momento e sem aviso prévio, contas de usuários que desrespeitem as disposições destes Termos de Serviço, gerem riscos de segurança ou criem passivos legais para a plataforma.
+          </p>
+
+          <h2 style={h2Style}>7. Isenção de Garantias e Limitação de Responsabilidade</h2>
+          <p style={pStyle}>
+            A plataforma é fornecida "como está" (*as is*) e "conforme disponível". Não garantimos que o serviço será ininterrupto, livre de erros ou 100% seguro.
+          </p>
+          <p style={pStyle}>
+            Em nenhum caso o StackFolio, seus criadores ou parceiros serão responsabilizados por quaisquer danos diretos, indiretos, incidentais ou perda de lucros e de dados resultantes da utilização (ou incapacidade de utilização) da plataforma, incluindo falhas na hospedagem do seu portfólio.
+          </p>
+
+          <h2 style={h2Style}>8. Alterações aos Termos</h2>
+          <p style={pStyle}>
+            Temos o direito de rever estes Termos periodicamente. As modificações entram em vigor no momento em que são publicadas nesta página. A continuação da utilização da plataforma após as alterações constitui a sua aceitação aos novos Termos de Serviço.
+          </p>
+        </section>
+
+      </main>
+
+      <style>{`
+        .hover-bg:hover { background: ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'} !important; }
+      `}</style>
     </div>
   );
 }
