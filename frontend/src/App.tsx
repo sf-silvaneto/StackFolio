@@ -5,7 +5,7 @@ import { HomePage } from './pages/Home/HomePage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage'; 
 import { ForgotPasswordPage } from './pages/Auth/ForgotPasswordPage'; // <-- Adicionado
-import { ProfilePage } from './pages/Profile/ProfilePage';
+import ProfilePage from './pages/Profile/ProfilePage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { PrivacyPage } from './pages/Legal/PrivacyPage';
 import { TermsPage } from './pages/Legal/TermsPage';

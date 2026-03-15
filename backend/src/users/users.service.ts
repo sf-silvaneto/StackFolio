@@ -1,19 +1,20 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  // FUNÇÃO ADICIONADA: Encontra o usuário pelo link do perfil (username)
   async findByUsername(username: string) {
     const user = await this.prisma.user.findUnique({
       where: { username },
+      include: { projects: true },
     });
 
     if (!user) throw new NotFoundException('Utilizador não encontrado');
 
-    // Removemos a senha por segurança antes de enviar para o frontend
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -22,43 +23,64 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilizador não encontrado');
 
+    // Validação de Username Único
     if (data.username && data.username !== user.username) {
       const existing = await this.prisma.user.findFirst({
-        where: { 
-          username: data.username,
-          NOT: { id: userId } 
-        }
+        where: { username: data.username, NOT: { id: userId } }
       });
       if (existing) throw new ConflictException('Este Link/Username já está em uso.');
     }
 
-    const updateData = {
-      fullName: data.fullName !== undefined ? data.fullName : user.fullName,
-      displayName: data.displayName !== undefined ? data.displayName : user.displayName,
-      username: data.username !== undefined ? data.username : user.username,
-      role: data.role !== undefined ? data.role : user.role,
-      seniority: data.seniority !== undefined ? data.seniority : user.seniority,
-      englishLevel: data.englishLevel !== undefined ? data.englishLevel : user.englishLevel,
-      location: data.location !== undefined ? data.location : user.location,
-      availability: data.availability !== undefined ? data.availability : user.availability,
-      bio: data.bio !== undefined ? data.bio : user.bio,
-      profileImg: data.profileImg !== undefined ? data.profileImg : user.profileImg,
-      coverImg: data.coverImg !== undefined ? data.coverImg : user.coverImg,
-      phone: data.phone !== undefined ? data.phone : user.phone,
-      gender: data.gender !== undefined ? data.gender : user.gender,
-      github: data.github !== undefined ? data.github : user.github,
-      linkedin: data.linkedin !== undefined ? data.linkedin : user.linkedin,
-      birthDate: data.birthDate ? new Date(data.birthDate) : user.birthDate,
-      tools: data.tools ? (typeof data.tools === 'string' ? data.tools : JSON.stringify(data.tools)) : user.tools,
-      education: data.education ? (typeof data.education === 'string' ? data.education : JSON.stringify(data.education)) : user.education,
-    };
+    // Processamento de Imagens (Base64 -> Arquivo)
+    let profileImgPath = data.profileImg;
+    if (data.profileImg && data.profileImg.startsWith('data:image')) {
+      profileImgPath = this.saveBase64Image(userId, data.profileImg, 'avatar');
+    }
 
-    const updatedUser = await this.prisma.user.update({
+    let coverImgPath = data.coverImg;
+    if (data.coverImg && data.coverImg.startsWith('data:image')) {
+      coverImgPath = this.saveBase64Image(userId, data.coverImg, 'cover');
+    }
+
+    return this.prisma.user.update({
       where: { id: userId },
-      data: updateData,
+      data: {
+        fullName: data.fullName,
+        displayName: data.displayName,
+        role: data.role, // MAPEA PARA O CAMPO DO SCHEMA.PRISMA
+        seniority: data.seniority,
+        englishLevel: data.englishLevel,
+        location: data.location,
+        availability: data.availability,
+        bio: data.bio,
+        github: data.github,
+        linkedin: data.linkedin,
+        profileImg: profileImgPath,
+        coverImg: coverImgPath,
+        tools: data.tools, // Já vem como string do CompleteRegistration no Front
+        education: data.education,
+        experience: data.experience,
+      },
+      include: { projects: true }
     });
+  }
 
-    const { password_hash, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+  private saveBase64Image(userId: string, base64Str: string, type: string): string {
+    try {
+      const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const fileName = `${type}-${userId}-${Date.now()}.png`;
+      
+      const uploadDir = join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+      fs.writeFileSync(join(uploadDir, fileName), buffer);
+      
+      // Retorna a URL para o frontend acessar
+      return `http://localhost:3000/uploads/${fileName}`;
+    } catch (e) {
+      console.error("Erro ao salvar imagem:", e);
+      return base64Str;
+    }
   }
 }

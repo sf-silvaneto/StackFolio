@@ -30,6 +30,7 @@ model User {
   coverImg     String?
   tools        String?
   education    String?
+  experience   String?
   github       String?
   linkedin     String?
 

@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from './auth.guard';
+// A correção principal está na linha abaixo: importando como namespace
+import * as Express from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -14,20 +16,23 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: any) {
+  async login(
+    @Body() loginDto: LoginDto, 
+    @Res({ passthrough: true }) res: Express.Response // Usando o namespace aqui
+  ) {
     const result = await this.authService.login(loginDto);
 
     res.cookie('session_token', result.sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: false, // Mantenha false para localhost
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
     });
 
     return { message: result.message, user: result.user };
   }
 
-  // --- E-MAIL VERIFICATION (REGISTRO) ---
   @Post('send-email-code')
   async sendEmailCode(@Body('email') email: string) {
     return this.authService.sendEmailCode(email);
@@ -38,7 +43,6 @@ export class AuthController {
     return this.authService.verifyEmailCode(email, code);
   }
 
-  // --- PASSWORD RECOVERY (ESQUECI A SENHA) ---
   @Post('forgot-password')
   async forgotPassword(@Body('email') email: string) {
     return this.authService.forgotPassword(email);
@@ -49,7 +53,6 @@ export class AuthController {
     return this.authService.resetPassword(body);
   }
 
-  // --- AVAILABILITY CHECKS ---
   @Get('check-email')
   async checkEmail(@Query('email') email: string) {
     return this.authService.checkEmail(email);
@@ -60,17 +63,17 @@ export class AuthController {
     return this.authService.checkUsername(username);
   }
 
-  // --- USER DATA & SESSION ---
   @UseGuards(AuthGuard)
   @Get('me')
   async getMe(@Req() req: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password_hash, sessions, ...safeUser } = req.user;
     return safeUser;
   }
 
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: any) {
-    res.cookie('session_token', '', { httpOnly: true, expires: new Date(0) });
+  async logout(@Res({ passthrough: true }) res: Express.Response) { // Usando o namespace aqui também
+    res.clearCookie('session_token', { path: '/' });
     return { message: 'Logout efetuado com sucesso.' };
   }
 }

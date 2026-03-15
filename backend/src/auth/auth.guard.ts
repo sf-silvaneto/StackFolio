@@ -1,5 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service'; // Confirme se o caminho para o prisma.service está correto
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -8,41 +8,31 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     
-    // 1. Ler o cookie diretamente do cabeçalho da requisição
-    const cookieHeader = request.headers.cookie;
-    let token = null;
+    // Extrai o token dos cookies processados pelo cookie-parser
+    const token = request.cookies?.session_token;
 
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').map(c => c.trim());
-      const sessionCookie = cookies.find(c => c.startsWith('session_token='));
-      if (sessionCookie) {
-        token = sessionCookie.split('=')[1];
-      }
-    }
-    
     if (!token) {
-      throw new UnauthorizedException('Não autenticado. Por favor, faça login.');
+      console.log('AuthGuard: Requisição sem session_token nos cookies.');
+      throw new UnauthorizedException('Sessão expirada ou não autenticada.');
     }
 
-    // 2. Procurar a sessão na base de dados
-    const session = await this.prisma.session.findUnique({
+    const session: any = await this.prisma.session.findUnique({
       where: { sessionToken: token },
-      include: { user: true } // Traz os dados do utilizador junto com a sessão
+      include: { user: true }
     });
 
-    if (!session) {
+    if (!session || !session.user) {
       throw new UnauthorizedException('Sessão inválida ou não encontrada.');
     }
 
-    // 3. Verificar se a sessão já expirou
     if (session.expiresAt < new Date()) {
-      await this.prisma.session.delete({ where: { id: session.id } }); // Limpa do banco
+      try {
+        await this.prisma.session.delete({ where: { id: session.id } });
+      } catch (e) {}
       throw new UnauthorizedException('A sua sessão expirou. Faça login novamente.');
     }
 
-    // 4. Anexar o utilizador à requisição (para os controllers poderem aceder)
     request['user'] = session.user;
-
     return true;
   }
 }

@@ -1,31 +1,22 @@
-import { Controller, Patch, Body, Req, UnauthorizedException, Get, Param } from '@nestjs/common';
+import { Controller, Patch, Body, Req, UseGuards, Get, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { PrismaService } from '../prisma.service';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService, private prisma: PrismaService) {}
+  constructor(private readonly usersService: UsersService) {}
 
-  // ROTA ADICIONADA: Busca o perfil público pelo username
+  // Aberto ao público: qualquer um pode ver o perfil
   @Get('profile/:username')
   async getProfile(@Param('username') username: string) {
     return this.usersService.findByUsername(username);
   }
 
+  // Protegido: Apenas o dono da conta (validado pelo session_token) pode editar
+  @UseGuards(AuthGuard)
   @Patch('profile')
   async updateProfile(@Req() req: any, @Body() data: any) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) throw new UnauthorizedException('Não autorizado');
-
-    const token = authHeader.split(' ')[1];
-    const session = await this.prisma.session.findUnique({
-      where: { sessionToken: token },
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Sessão expirada');
-    }
-
-    return this.usersService.updateProfile(session.userId, data);
+    const userId = req.user.id;
+    return this.usersService.updateProfile(userId, data);
   }
 }
